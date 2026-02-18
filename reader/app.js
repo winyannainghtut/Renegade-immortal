@@ -114,9 +114,12 @@
       applyTypography();
     });
 
-    els.fontSizeRange.addEventListener("input", () => {
+    const handleFontSizeInput = () => {
       setFontSize(els.fontSizeRange.value);
-    });
+    };
+
+    els.fontSizeRange.addEventListener("input", handleFontSizeInput);
+    els.fontSizeRange.addEventListener("change", handleFontSizeInput);
 
     if (els.decreaseFontSizeBtn) {
       els.decreaseFontSizeBtn.addEventListener("click", () => {
@@ -165,6 +168,16 @@
       if (els.toolbar.contains(event.target)) return;
       setSettingsOpen(false);
     });
+
+    if (els.settingsPanel) {
+      els.settingsPanel.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
+
+      els.settingsPanel.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+    }
 
     els.contentStage.addEventListener("scroll", handleReadProgressScroll, { passive: true });
     els.content.addEventListener("click", handleContentLinkClick);
@@ -799,14 +812,24 @@
     document.documentElement.setAttribute("data-theme", resolved);
   }
 
+  function normalizeFontSize(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return FONT_SIZE_MIN;
+    }
+
+    const steppedValue = Math.round(numericValue / FONT_SIZE_STEP) * FONT_SIZE_STEP;
+    return clamp(steppedValue, FONT_SIZE_MIN, FONT_SIZE_MAX);
+  }
+
   function setFontSize(value) {
-    state.settings.fontSize = clamp(Number(value), FONT_SIZE_MIN, FONT_SIZE_MAX);
+    state.settings.fontSize = normalizeFontSize(value);
     applyTypography();
     saveSettings();
   }
 
   function updateFontSizeButtons(value) {
-    const fontSize = clamp(Number(value), FONT_SIZE_MIN, FONT_SIZE_MAX);
+    const fontSize = normalizeFontSize(value);
 
     if (els.decreaseFontSizeBtn) {
       els.decreaseFontSizeBtn.disabled = fontSize <= FONT_SIZE_MIN;
@@ -818,7 +841,7 @@
   }
 
   function applyTypography() {
-    const fontSize = clamp(Number(state.settings.fontSize), FONT_SIZE_MIN, FONT_SIZE_MAX);
+    const fontSize = normalizeFontSize(state.settings.fontSize);
     const lineHeight = clamp(Number(state.settings.lineHeight), 1.35, 2.2);
     const width = clamp(Number(state.settings.width), 560, 1080);
     const fontFamily = fontMap[state.settings.font] || fontMap.serif;
@@ -854,7 +877,7 @@
     return {
       theme: normalizeTheme(source.theme),
       font: normalizeFont(source.font),
-      fontSize: clamp(Number(source.fontSize), FONT_SIZE_MIN, FONT_SIZE_MAX),
+      fontSize: normalizeFontSize(source.fontSize),
       lineHeight: clamp(Number(source.lineHeight), 1.35, 2.2),
       width: clamp(Number(source.width), 560, 1080),
       source: asNonEmptyString(source.source) || "all"

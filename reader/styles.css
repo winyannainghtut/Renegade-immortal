@@ -285,6 +285,8 @@ select:focus {
 
 .toolbar-secondary {
   display: flex;
+  position: relative;
+  z-index: 1;
 }
 
 .toolbar-secondary[hidden] {
@@ -321,11 +323,16 @@ select:focus {
   grid-template-columns: 34px minmax(0, 1fr) 34px;
   align-items: center;
   gap: 6px;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .font-size-stepper input[type="range"] {
   width: 100%;
   min-width: 0;
+  pointer-events: auto;
+  touch-action: pan-x;
 }
 
 .font-size-stepper .stepper-btn {
@@ -336,6 +343,8 @@ select:focus {
   font-size: 1.08rem;
   font-weight: 600;
   line-height: 1;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .icon-btn {
@@ -625,6 +634,11 @@ select:focus {
     scrollbar-width: thin;
     padding-bottom: 1px;
     margin-right: -2px;
+    z-index: 4;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .toolbar-secondary .settings-grid {
@@ -638,6 +652,25 @@ select:focus {
   .settings-grid > .setting-field {
     min-width: 122px;
     font-size: 0.76rem;
+  }
+
+  .settings-grid > .setting-field {
+    min-width: 184px;
+  }
+
+  .settings-grid select,
+  .settings-grid input[type="range"] {
+    min-height: 40px;
+  }
+
+  .font-size-stepper {
+    grid-template-columns: 40px minmax(92px, 1fr) 40px;
+  }
+
+  .font-size-stepper .stepper-btn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
   }
 
   .width-control {
@@ -732,6 +765,14 @@ select:focus {
     min-width: 112px;
   }
 
+  .settings-grid > .setting-field {
+    min-width: 184px;
+  }
+
+  .font-size-stepper .stepper-btn.icon-only {
+    width: 40px;
+  }
+
   .search-wrap input,
   select {
     min-height: 40px;
@@ -787,6 +828,25 @@ select:focus {
   .content blockquote {
     margin: 1.05em 0;
     padding: 0.45em 0.85em;
+  }
+}
+
+@media (pointer: coarse) {
+  .settings-grid input[type="range"] {
+    accent-color: var(--accent);
+  }
+
+  .settings-grid input[type="range"]::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+  }
+
+  .settings-grid input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 0;
   }
 }
 
