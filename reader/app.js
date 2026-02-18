@@ -1,9 +1,17 @@
 (function () {
   "use strict";
 
-  const SETTINGS_KEY = "novel_reader_settings_v1";
-  const LAST_CHAPTER_KEY = "novel_reader_last_chapter_v1";
-  const PROGRESS_KEY = "novel_reader_scroll_progress_v1";
+  const repoScope = (() => {
+    const firstSegment = window.location.pathname.split("/").filter(Boolean)[0];
+    return firstSegment || "local";
+  })();
+
+  const SETTINGS_KEY = `novel_reader_settings_${repoScope}_v1`;
+  const LAST_CHAPTER_KEY = `novel_reader_last_chapter_${repoScope}_v1`;
+  const PROGRESS_KEY = `novel_reader_scroll_progress_${repoScope}_v1`;
+  const LEGACY_SETTINGS_KEY = "novel_reader_settings_v1";
+  const LEGACY_LAST_CHAPTER_KEY = "novel_reader_last_chapter_v1";
+  const LEGACY_PROGRESS_KEY = "novel_reader_scroll_progress_v1";
   const SYSTEM_THEME_QUERY = window.matchMedia("(prefers-color-scheme: dark)");
 
   const defaultSettings = {
@@ -30,8 +38,8 @@
     visibleEntries: [],
     currentId: null,
     currentHtml: "",
-    settings: readJSON(SETTINGS_KEY, defaultSettings),
-    progress: readJSON(PROGRESS_KEY, {}),
+    settings: readJSONWithLegacy(SETTINGS_KEY, LEGACY_SETTINGS_KEY, defaultSettings),
+    progress: readJSONWithLegacy(PROGRESS_KEY, LEGACY_PROGRESS_KEY, {}),
     saveTimer: null,
     pagingLayoutTimer: null,
     wheelLockUntil: 0
@@ -243,7 +251,7 @@
         return;
       }
 
-      const lastChapter = localStorage.getItem(LAST_CHAPTER_KEY);
+      const lastChapter = localStorage.getItem(LAST_CHAPTER_KEY) || localStorage.getItem(LEGACY_LAST_CHAPTER_KEY);
       const defaultChapter = state.entries[0]?.id;
       const initialChapter = state.entries.some((entry) => entry.id === lastChapter)
         ? lastChapter
@@ -791,6 +799,18 @@
     } catch (_error) {
       return cloneDefault(fallback);
     }
+  }
+
+  function readJSONWithLegacy(key, legacyKey, fallback) {
+    const scopedValue = readJSON(key, fallback);
+    const hasScoped = localStorage.getItem(key) !== null;
+    if (hasScoped || !legacyKey) {
+      return scopedValue;
+    }
+
+    const legacyValue = readJSON(legacyKey, fallback);
+    localStorage.setItem(key, JSON.stringify(legacyValue));
+    return legacyValue;
   }
 
   function cloneDefault(value) {
