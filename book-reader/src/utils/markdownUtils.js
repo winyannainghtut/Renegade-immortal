@@ -1,8 +1,8 @@
 /**
- * Utility functions for fetching and managing markdown files
+ * Utility functions for fetching and managing markdown files.
  */
 
-// Episode ranges for folder structure
+// Episode ranges for folder structure.
 export const EPISODE_RANGES = [
   { start: 1, end: 100, folder: '0001-0100' },
   { start: 101, end: 200, folder: '0101-0200' },
@@ -27,178 +27,138 @@ export const EPISODE_RANGES = [
   { start: 2001, end: 2100, folder: '2001-2088' },
 ];
 
+function getBaseUrl() {
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+}
+
+export function buildPublicAssetPath(relativePath) {
+  const normalizedPath = relativePath.replace(/^\/+/, '');
+  return `${getBaseUrl()}${normalizedPath}`;
+}
+
 /**
- * Get the folder name for a given episode number
- * @param {number} episodeNum - Episode number
- * @returns {string|null} - Folder name or null if not found
+ * Format episode number with leading zeros (4 digits).
+ */
+export function formatEpisodeNumber(num) {
+  return String(num).padStart(4, '0');
+}
+
+/**
+ * Get the folder name for a given episode number.
  */
 export function getFolderForEpisode(episodeNum) {
-  const range = EPISODE_RANGES.find(r => episodeNum >= r.start && episodeNum <= r.end);
+  const range = EPISODE_RANGES.find((entry) => episodeNum >= entry.start && episodeNum <= entry.end);
   return range ? range.folder : null;
 }
 
-/**
- * Format episode number with leading zeros (4 digits)
- * @param {number} num - Episode number
- * @returns {string} - Formatted number like "0001"
- */
-export function formatEpisodeNumber(num) {
-  return num.toString().padStart(4, '0');
+function getLanguageFolder(language) {
+  return language === 'burmese' ? 'burmese-episodes' : 'eng-episodes';
 }
 
 /**
- * Build the URL path for an episode markdown file
- * @param {string} language - 'eng' or 'burmese'
- * @param {number} episodeNum - Episode number
- * @returns {string|null} - URL path or null if folder not found
+ * Build the URL path for an episode markdown file.
  */
 export function getEpisodePath(language, episodeNum) {
   const folder = getFolderForEpisode(episodeNum);
-  if (!folder) return null;
+  if (!folder) {
+    return null;
+  }
 
-  const langFolder = language === 'burmese' ? 'burmese-episodes' : 'eng-episodes';
+  const languageFolder = getLanguageFolder(language);
   const filename = `${formatEpisodeNumber(episodeNum)}.md`;
-  const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/');
-  return `${baseUrl}${langFolder}/${folder}/${filename}`;
+  return buildPublicAssetPath(`${languageFolder}/${folder}/${filename}`);
 }
 
 /**
- * Fetch markdown content for a specific episode
- * @param {string} language - 'eng' or 'burmese'
- * @param {number} episodeNum - Episode number
- * @returns {Promise<{content: string, episode: number, language: string}|null>} - Episode data or null if error
+ * Fetch markdown content for a specific episode.
+ * Returns null only for HTTP 404 (missing episode).
  */
-export async function fetchEpisode(language, episodeNum) {
-  const path = getEpisodePath(language, episodeNum);
-  if (!path) {
-    console.error(`No folder found for episode ${episodeNum}`);
+export async function fetchEpisode(language, episodeNum, options = {}) {
+  const episodePath = getEpisodePath(language, episodeNum);
+  if (!episodePath) {
     return null;
   }
 
-  try {
-    const response = await fetch(path);
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null; // Episode doesn't exist yet
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const content = await response.text();
-    return {
-      content,
-      episode: episodeNum,
-      language,
-      path
-    };
-  } catch (error) {
-    console.error(`Error fetching episode ${episodeNum}:`, error);
+  const response = await fetch(episodePath, { signal: options.signal });
+  if (response.status === 404) {
     return null;
   }
-}
-
-/**
- * Get the next episode that exists
- * @param {string} language - 'eng' or 'burmese'
- * @param {number} currentEpisode - Current episode number
- * @param {number} maxAttempts - Maximum number of episodes to check
- * @returns {Promise<object|null>} - Next episode data or null
- */
-export async function getNextEpisode(language, currentEpisode, maxAttempts = 5) {
-  for (let i = 1; i <= maxAttempts; i++) {
-    const next = await fetchEpisode(language, currentEpisode + i);
-    if (next) return next;
+  if (!response.ok) {
+    throw new Error(`Failed to load episode ${formatEpisodeNumber(episodeNum)} (${response.status})`);
   }
-  return null;
+
+  const content = await response.text();
+  return {
+    content,
+    episode: episodeNum,
+    language,
+    path: episodePath,
+  };
 }
 
 /**
- * Get the previous episode that exists
- * @param {string} language - 'eng' or 'burmese'
- * @param {number} currentEpisode - Current episode number
- * @param {number} maxAttempts - Maximum number of episodes to check
- * @returns {Promise<object|null>} - Previous episode data or null
+ * Split content into pages for the book reader.
  */
-export async function getPrevEpisode(language, currentEpisode, maxAttempts = 5) {
-  for (let i = 1; i <= maxAttempts; i++) {
-    const prevNum = currentEpisode - i;
-    if (prevNum < 1) return null;
-    const prev = await fetchEpisode(language, prevNum);
-    if (prev) return prev;
+export function splitIntoPages(content, maxCharsPerPage = 2800) {
+  if (!content || !content.trim()) {
+    return [];
   }
-  return null;
-}
 
-/**
- * Get available episodes index for a language
- * This creates an index of available episodes by checking which files exist
- * @param {string} language - 'eng' or 'burmese'
- * @returns {Promise<number[]>} - Array of available episode numbers
- */
-export async function getEpisodeIndex(language) {
-  const index = [];
-  // Check episodes in batches to avoid too many requests
-  for (let ep = 1; ep <= 2088; ep++) {
-    const path = getEpisodePath(language, ep);
-    if (path) {
-      try {
-        const response = await fetch(path, { method: 'HEAD' });
-        if (response.ok) {
-          index.push(ep);
-        }
-      } catch (e) {
-        // Ignore errors, episode doesn't exist
-      }
-    }
+  if (content.length <= maxCharsPerPage) {
+    return [content.trim()];
   }
-  return index;
-}
 
-/**
- * Get the first available episode number
- * @param {string} language - 'eng' or 'burmese'
- * @returns {number} - First episode number (usually 1)
- */
-export function getFirstEpisode() {
-  return 1;
-}
-
-/**
- * Split content into pages for the book reader
- * @param {string} content - Markdown content
- * @param {number} maxCharsPerPage - Maximum characters per page
- * @returns {string[]} - Array of page contents
- */
-export function splitIntoPages(content, maxCharsPerPage = 3000) {
-  if (!content || content.length <= maxCharsPerPage) {
-    return [content];
-  }
+  const blocks = content
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
 
   const pages = [];
   let currentPage = '';
-  
-  // Split by paragraphs to avoid cutting mid-paragraph
-  const paragraphs = content.split('\n\n');
-  
-  for (const paragraph of paragraphs) {
-    if ((currentPage + paragraph).length > maxCharsPerPage && currentPage.length > 0) {
+
+  const pushCurrentPage = () => {
+    if (currentPage.trim()) {
       pages.push(currentPage.trim());
-      currentPage = paragraph + '\n\n';
-    } else {
-      currentPage += paragraph + '\n\n';
+      currentPage = '';
     }
+  };
+
+  for (const block of blocks) {
+    const joined = currentPage ? `${currentPage}\n\n${block}` : block;
+    if (joined.length <= maxCharsPerPage) {
+      currentPage = joined;
+      continue;
+    }
+
+    pushCurrentPage();
+
+    if (block.length <= maxCharsPerPage) {
+      currentPage = block;
+      continue;
+    }
+
+    let remaining = block;
+    while (remaining.length > maxCharsPerPage) {
+      let splitAt = remaining.lastIndexOf('\n', maxCharsPerPage);
+      if (splitAt < Math.floor(maxCharsPerPage * 0.45)) {
+        splitAt = remaining.lastIndexOf(' ', maxCharsPerPage);
+      }
+      if (splitAt < Math.floor(maxCharsPerPage * 0.45)) {
+        splitAt = maxCharsPerPage;
+      }
+      pages.push(remaining.slice(0, splitAt).trim());
+      remaining = remaining.slice(splitAt).trimStart();
+    }
+    currentPage = remaining;
   }
-  
-  if (currentPage.trim()) {
-    pages.push(currentPage.trim());
-  }
-  
-  return pages.length > 0 ? pages : [content];
+
+  pushCurrentPage();
+  return pages.length > 0 ? pages : [content.trim()];
 }
 
 /**
- * Extract title from markdown content (first h1 heading)
- * @param {string} content - Markdown content
- * @returns {string|null} - Title or null
+ * Extract title from markdown content (first h1 heading).
  */
 export function extractTitle(content) {
   const match = content.match(/^#\s+(.+)$/m);

@@ -7,7 +7,9 @@ A beautiful book reader web application built with React, Vite, and Tailwind CSS
 - 📖 **Page Flip Effect**: Realistic book page turning animation
 - 🌐 **Dual Language Support**: Toggle between English and Burmese
 - 📱 **Responsive Design**: Single page on mobile, two-page spread on desktop
-- 🔍 **Episode Navigation**: Jump to any episode with the episode selector
+- 🔍 **Episode Navigation**: Jump to any episode with nearest-available fallback per language
+- 🔗 **Deep Links**: URL keeps episode and language state (`#/episode/120?lang=eng`)
+- 🛡️ **Stable Reader Fallback**: Automatically switches to simple pager mode if page-flip fails
 - 🎨 **Elegant Design**: Warm, book-like color scheme
 
 ## Tech Stack
@@ -58,6 +60,8 @@ npm install
 npm run dev
 ```
 
+This runs episode sync first so `public/eng-episodes`, `public/burmese-episodes`, and `public/episode-index.json` are current.
+
 3. Build for production:
 ```bash
 npm run build
@@ -72,7 +76,18 @@ npm run deploy
 
 ### Adding Episodes
 
-Place markdown files in the appropriate folder structure:
+Source markdown files are synced from:
+- `../eng-episodes`
+- `../burmese-episodes`
+
+During `npm run dev` and `npm run build`, `scripts/sync-episodes.mjs` copies episodes into `public` and regenerates `public/episode-index.json`.
+
+If you need to sync manually:
+```bash
+npm run sync:episodes
+```
+
+Markdown files are served from:
 - English: `public/eng-episodes/{range}/{episode}.md`
 - Burmese: `public/burmese-episodes/{range}/{episode}.md`
 
@@ -94,6 +109,10 @@ Content here...
 ## GitHub Pages Deployment
 
 This project is configured for GitHub Pages deployment using HashRouter. Update the `homepage` field in `package.json` with your repository URL before deploying.
+
+Reader URLs are hash-based and safe for GitHub Pages project paths:
+- `#/episode/1?lang=eng`
+- `#/episode/55?lang=burmese`
 
 ### Automatic Deployment via GitHub Actions
 

@@ -1,123 +1,160 @@
-/**
- * Episode Index Management
- * 
- * This utility manages the list of available episodes for both English and Burmese.
- * It creates indices by scanning the folder structure.
- */
+import { buildPublicAssetPath } from './markdownUtils';
 
-import { EPISODE_RANGES } from './markdownUtils';
+const DEFAULT_MAX_EPISODE = 2088;
 
-// Default maximum episode
-const MAX_EPISODE = 2088;
-
-/**
- * Generate the folder path for an episode
- */
-function getFolderPath(episodeNum) {
-  const range = EPISODE_RANGES.find(r => episodeNum >= r.start && episodeNum <= r.end);
-  return range ? range.folder : null;
+export function normalizeLanguage(language) {
+  if (language === 'burmese' || language === 'my' || language === 'mm') {
+    return 'burmese';
+  }
+  return 'eng';
 }
 
-/**
- * Create an index of available episodes
- * This generates a JSON structure representing all episodes and their availability
- */
-export function generateEpisodeIndex() {
-  const index = {
-    eng: [],
-    burmese: [],
+function normalizeEpisodeNumber(value) {
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeEpisodeList(episodes) {
+  if (!Array.isArray(episodes)) {
+    return [];
+  }
+  const normalized = episodes
+    .map((episode) => normalizeEpisodeNumber(episode))
+    .filter((episode) => episode !== null);
+  return [...new Set(normalized)].sort((a, b) => a - b);
+}
+
+function expandFolderRanges(folders) {
+  if (!Array.isArray(folders)) {
+    return [];
+  }
+
+  const episodes = [];
+  for (const folder of folders) {
+    const start = normalizeEpisodeNumber(folder?.start);
+    const end = normalizeEpisodeNumber(folder?.end);
+    if (start === null || end === null || end < start) {
+      continue;
+    }
+    for (let number = start; number <= end; number += 1) {
+      episodes.push(number);
+    }
+  }
+
+  return normalizeEpisodeList(episodes);
+}
+
+function createFallbackIndex() {
+  return {
+    eng: {
+      totalEpisodes: DEFAULT_MAX_EPISODE,
+      availableEpisodes: Array.from({ length: DEFAULT_MAX_EPISODE }, (_, index) => index + 1),
+      folders: [],
+    },
+    burmese: {
+      totalEpisodes: 100,
+      availableEpisodes: Array.from({ length: 100 }, (_, index) => index + 1),
+      folders: [{ name: '0001-0100', start: 1, end: 100 }],
+    },
     metadata: {
-      totalEpisodes: MAX_EPISODE,
-      lastUpdated: new Date().toISOString()
-    }
+      title: 'Renegade Immortal (Xian Ni)',
+      lastUpdated: new Date().toISOString(),
+      generated: false,
+    },
   };
+}
 
-  for (let ep = 1; ep <= MAX_EPISODE; ep++) {
-    const folder = getFolderPath(ep);
-    if (folder) {
-      // Add episode entry with folder info
-      const episodeEntry = {
-        number: ep,
-        folder: folder,
-        paddedNumber: ep.toString().padStart(4, '0')
-      };
-      
-      // Both languages have the same structure
-      index.eng.push(episodeEntry);
-      index.burmese.push(episodeEntry);
+export async function fetchEpisodeIndex(options = {}) {
+  const indexPath = buildPublicAssetPath('episode-index.json');
+
+  try {
+    const response = await fetch(indexPath, { signal: options.signal });
+    if (!response.ok) {
+      throw new Error(`Failed to load episode index (${response.status})`);
+    }
+    return await response.json();
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw error;
+    }
+    console.error('Episode index fallback activated:', error);
+    return createFallbackIndex();
+  }
+}
+
+export function getAvailableEpisodes(indexData, language) {
+  const normalizedLanguage = normalizeLanguage(language);
+  const languageSection = indexData?.[normalizedLanguage] || {};
+
+  const directList = normalizeEpisodeList(languageSection.availableEpisodes);
+  if (directList.length > 0) {
+    return directList;
+  }
+
+  const fromFolders = expandFolderRanges(languageSection.folders);
+  if (fromFolders.length > 0) {
+    return fromFolders;
+  }
+
+  const total = normalizeEpisodeNumber(languageSection.totalEpisodes) || DEFAULT_MAX_EPISODE;
+  return Array.from({ length: total }, (_, index) => index + 1);
+}
+
+export function findNearestEpisode(availableEpisodes, targetEpisode) {
+  if (!Array.isArray(availableEpisodes) || availableEpisodes.length === 0) {
+    return null;
+  }
+
+  const target = normalizeEpisodeNumber(targetEpisode) || availableEpisodes[0];
+  const first = availableEpisodes[0];
+  const last = availableEpisodes[availableEpisodes.length - 1];
+
+  if (target <= first) {
+    return first;
+  }
+  if (target >= last) {
+    return last;
+  }
+
+  let left = 0;
+  let right = availableEpisodes.length - 1;
+  while (left <= right) {
+    const middle = Math.floor((left + right) / 2);
+    const current = availableEpisodes[middle];
+    if (current === target) {
+      return current;
+    }
+    if (current < target) {
+      left = middle + 1;
+    } else {
+      right = middle - 1;
     }
   }
 
-  return index;
-}
-
-/**
- * Get episodes by range
- */
-export function getEpisodesByRange(language, start, end) {
-  const index = generateEpisodeIndex();
-  const episodes = index[language] || index.eng;
-  return episodes.filter(ep => ep.number >= start && ep.number <= end);
-}
-
-/**
- * Search episodes by number or partial match
- */
-export function searchEpisodes(query, language = 'eng') {
-  const index = generateEpisodeIndex();
-  const episodes = index[language] || index.eng;
-  
-  if (!query) return episodes;
-  
-  const numQuery = parseInt(query, 10);
-  if (!isNaN(numQuery)) {
-    return episodes.filter(ep => ep.number === numQuery);
+  const lower = availableEpisodes[right];
+  const upper = availableEpisodes[left];
+  if (typeof lower !== 'number') {
+    return upper;
   }
-  
-  return episodes.filter(ep => 
-    ep.paddedNumber.includes(query)
-  );
-}
-
-/**
- * Get episodes in a specific folder
- */
-export function getEpisodesInFolder(folderName, language = 'eng') {
-  const index = generateEpisodeIndex();
-  const episodes = index[language] || index.eng;
-  return episodes.filter(ep => ep.folder === folderName);
-}
-
-/**
- * Get all folder names
- */
-export function getAllFolders() {
-  return EPISODE_RANGES.map(r => ({
-    folder: r.folder,
-    start: r.start,
-    end: r.end,
-    count: r.end - r.start + 1
-  }));
-}
-
-/**
- * Format episode display name
- */
-export function formatEpisodeName(episodeNum, title = null) {
-  const padded = episodeNum.toString().padStart(4, '0');
-  if (title) {
-    return `Episode ${padded} - ${title}`;
+  if (typeof upper !== 'number') {
+    return lower;
   }
-  return `Episode ${padded}`;
+  return target - lower <= upper - target ? lower : upper;
 }
 
-/**
- * Format Burmese episode display name
- */
-export function formatBurmeseEpisodeName(episodeNum, title = null) {
-  const padded = episodeNum.toString().padStart(4, '0');
-  if (title) {
-    return `အပိုင်း ${padded} - ${title}`;
+export function getAdjacentEpisode(availableEpisodes, currentEpisode, direction) {
+  if (!Array.isArray(availableEpisodes) || availableEpisodes.length === 0) {
+    return null;
   }
-  return `အပိုင်း ${padded}`;
+
+  const index = availableEpisodes.indexOf(currentEpisode);
+  if (index < 0) {
+    return null;
+  }
+
+  const nextIndex = direction > 0 ? index + 1 : index - 1;
+  if (nextIndex < 0 || nextIndex >= availableEpisodes.length) {
+    return null;
+  }
+  return availableEpisodes[nextIndex];
 }

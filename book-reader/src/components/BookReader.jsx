@@ -1,188 +1,486 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import HTMLFlipBook from 'react-pageflip';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { 
-  fetchEpisode, 
-  getNextEpisode, 
-  getPrevEpisode, 
-  splitIntoPages,
+import FlipBookErrorBoundary from './FlipBookErrorBoundary';
+import {
+  extractTitle,
+  fetchEpisode,
   formatEpisodeNumber,
-  extractTitle 
+  splitIntoPages,
 } from '../utils/markdownUtils';
+import {
+  fetchEpisodeIndex,
+  findNearestEpisode,
+  getAdjacentEpisode,
+  getAvailableEpisodes,
+  normalizeLanguage,
+} from '../utils/episodeIndex';
 
-// Individual page component for the flip book
-const Page = ({ pageNumber, children, className = '' }) => {
+const MOBILE_BREAKPOINT = 768;
+
+const LANGUAGE_COPY = {
+  eng: {
+    name: 'English',
+    shortName: 'EN',
+    languageLabel: 'Language',
+    episodeLabel: 'Episode',
+    loadingEpisode: 'Loading episode...',
+    unavailableHint: 'Episode not available in this language. Showing nearest available episode.',
+    noContent: 'No content available for this episode.',
+    pageLabel: 'Page',
+    clickHintDesktop: 'Click, drag, or use swipe gestures to turn pages.',
+    clickHintMobile: 'Swipe or tap edges to turn pages.',
+    loadErrorFallback: 'Could not load the selected episode.',
+    retry: 'Retry',
+  },
+  burmese: {
+    name: 'မြန်မာ',
+    shortName: 'MM',
+    languageLabel: 'ဘာသာစကား',
+    episodeLabel: 'အပိုင်း',
+    loadingEpisode: 'အပိုင်းကို ဖွင့်နေသည်...',
+    unavailableHint: 'ရွေးထားသော အပိုင်း မရှိသဖြင့် အနီးဆုံး အပိုင်းကို ပြထားသည်။',
+    noContent: 'ဤအပိုင်းတွင် ဖတ်ရန် အကြောင်းအရာမရှိပါ။',
+    pageLabel: 'စာမျက်နှာ',
+    clickHintDesktop: 'စာမျက်နှာပြောင်းရန် နှိပ်ပါ၊ ဆွဲပါ သို့မဟုတ် swipe လုပ်ပါ။',
+    clickHintMobile: 'Swipe သို့မဟုတ် အနားဘက်ကို နှိပ်ပြီး စာမျက်နှာပြောင်းနိုင်သည်။',
+    loadErrorFallback: 'ရွေးထားသော အပိုင်းကို ဖွင့်မရပါ။',
+    retry: 'ထပ်စမ်း',
+  },
+};
+
+function getInitialViewport() {
+  if (typeof window === 'undefined') {
+    return { width: 1280, height: 720 };
+  }
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+function getBookDimensions(isMobile, viewport) {
+  const horizontalPadding = isMobile ? 24 : 120;
+  const verticalReserve = isMobile ? 265 : 230;
+  const usableWidth = Math.max(280, viewport.width - horizontalPadding);
+  const usableHeight = Math.max(360, viewport.height - verticalReserve);
+
+  if (isMobile) {
+    return {
+      width: Math.min(usableWidth, 420),
+      height: Math.min(usableHeight, 680),
+      showCover: true,
+    };
+  }
+
+  const pageWidth = Math.min((usableWidth - 24) / 2, 520);
+  return {
+    width: Math.max(260, pageWidth),
+    height: Math.min(usableHeight, 780),
+    showCover: false,
+  };
+}
+
+function MarkdownPage({ language, pageNumber, content }) {
   return (
-    <div className={`page bg-book-paper p-6 md:p-8 shadow-inner ${className}`}>
-      <div className="page-content text-book-text font-serif leading-relaxed">
-        <div className="text-xs text-book-accent mb-4 opacity-60">
-          Page {pageNumber}
+    <div className="page h-full bg-book-paper px-5 py-5 shadow-inner md:px-8 md:py-7">
+      <div
+        className={`page-content h-full leading-relaxed text-book-text ${
+          language === 'burmese' ? 'font-burmese' : 'font-serif'
+        }`}
+      >
+        <p className="mb-3 text-xs font-semibold tracking-wide text-book-accent/70">
+          {language === 'burmese' ? `စာမျက်နှာ ${pageNumber}` : `Page ${pageNumber}`}
+        </p>
+        <div className="reader-markdown">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
         </div>
-        {children}
       </div>
     </div>
   );
-};
+}
 
-// Burmese page with special font
-const BurmesePage = ({ pageNumber, children }) => {
+function SimpleReaderView({ language, pages, pageIndex, onPageChange }) {
+  const canGoBack = pageIndex > 0;
+  const canGoForward = pageIndex < pages.length - 1;
+
   return (
-    <div className="page bg-book-paper p-6 md:p-8 shadow-inner">
-      <div className="page-content text-book-text font-burmese leading-relaxed">
-        <div className="text-xs text-book-accent mb-4 opacity-60">
-          စာမျက်နှာ {pageNumber}
-        </div>
-        {children}
+    <div className="w-full max-w-4xl">
+      <div className="h-[70vh] min-h-[340px] max-h-[760px] overflow-hidden rounded-lg shadow-2xl">
+        <MarkdownPage language={language} pageNumber={pageIndex + 1} content={pages[pageIndex]} />
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => onPageChange(pageIndex - 1)}
+          disabled={!canGoBack}
+          className="rounded bg-book-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          ← Page
+        </button>
+        <p className="text-sm text-book-text">
+          {pageIndex + 1} / {pages.length}
+        </p>
+        <button
+          type="button"
+          onClick={() => onPageChange(pageIndex + 1)}
+          disabled={!canGoForward}
+          className="rounded bg-book-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          Page →
+        </button>
       </div>
     </div>
   );
-};
+}
 
-const BookReader = ({ language, setLanguage }) => {
-  const [currentEpisode, setCurrentEpisode] = useState(1);
-  const [pages, setPages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [episodeTitle, setEpisodeTitle] = useState('');
-  const [pageNumber, setPageNumber] = useState(1);
-  const [totalEpisodes, setTotalEpisodes] = useState(2088);
-  const [isMobile, setIsMobile] = useState(false);
-  
+function BookReader() {
+  const navigate = useNavigate();
+  const { episodeNum } = useParams();
+  const [searchParams] = useSearchParams();
+
+  const [viewport, setViewport] = useState(getInitialViewport);
+  const [indexState, setIndexState] = useState({
+    loading: true,
+    error: '',
+    data: null,
+  });
+  const [indexReloadToken, setIndexReloadToken] = useState(0);
+  const [episodeState, setEpisodeState] = useState({
+    loading: true,
+    error: '',
+    title: '',
+    content: '',
+  });
+  const [episodeReloadToken, setEpisodeReloadToken] = useState(0);
+  const [jumpValue, setJumpValue] = useState('1');
+  const [pageIndex, setPageIndex] = useState(0);
+  const [manualSimpleMode, setManualSimpleMode] = useState(false);
+  const [flipFailed, setFlipFailed] = useState(false);
+
   const flipBookRef = useRef(null);
 
-  // Check if mobile for responsive display
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    const updateViewport = () => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
     };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
   }, []);
 
-  // Load episode content
-  const loadEpisode = useCallback(async (epNum) => {
-    setLoading(true);
-    setError(null);
-    
-    const episode = await fetchEpisode(language, epNum);
-    
-    if (episode) {
-      const title = extractTitle(episode.content) || `Episode ${formatEpisodeNumber(epNum)}`;
-      setEpisodeTitle(title);
-      setCurrentEpisode(epNum);
-      
-      // Split content into pages
-      const pageContents = splitIntoPages(episode.content, isMobile ? 2500 : 3500);
-      setPages(pageContents);
-      setPageNumber(1);
-      
-      // Reset flipbook to first page
-      if (flipBookRef.current) {
-        flipBookRef.current.pageFlip().flip(0);
+  useEffect(() => {
+    let isCancelled = false;
+    const abortController = new AbortController();
+
+    async function loadIndex() {
+      setIndexState({
+        loading: true,
+        error: '',
+        data: null,
+      });
+
+      try {
+        const indexData = await fetchEpisodeIndex({ signal: abortController.signal });
+        if (isCancelled) {
+          return;
+        }
+        setIndexState({
+          loading: false,
+          error: '',
+          data: indexData,
+        });
+      } catch (error) {
+        if (isCancelled || error.name === 'AbortError') {
+          return;
+        }
+        setIndexState({
+          loading: false,
+          error: error.message || 'Failed to load episode index.',
+          data: null,
+        });
       }
-    } else {
-      setError(`Episode ${formatEpisodeNumber(epNum)} not found in ${language === 'burmese' ? 'Burmese' : 'English'}`);
-      setPages([]);
     }
-    
-    setLoading(false);
-  }, [language, isMobile]);
 
-  // Load initial episode
+    loadIndex();
+    return () => {
+      isCancelled = true;
+      abortController.abort();
+    };
+  }, [indexReloadToken]);
+
+  const requestedEpisode = useMemo(() => {
+    const parsed = Number.parseInt(String(episodeNum || ''), 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [episodeNum]);
+
+  const queryLanguage = searchParams.get('lang');
+  const language = normalizeLanguage(queryLanguage);
+  const languageCopy = LANGUAGE_COPY[language];
+
+  const availableEpisodes = useMemo(
+    () => getAvailableEpisodes(indexState.data, language),
+    [indexState.data, language],
+  );
+  const firstAvailableEpisode = availableEpisodes[0] ?? 1;
+  const lastAvailableEpisode = availableEpisodes[availableEpisodes.length - 1] ?? 1;
+  const resolvedEpisode = useMemo(
+    () => findNearestEpisode(availableEpisodes, requestedEpisode ?? firstAvailableEpisode),
+    [availableEpisodes, firstAvailableEpisode, requestedEpisode],
+  );
+
   useEffect(() => {
-    loadEpisode(1);
-  }, [loadEpisode]);
+    if (indexState.loading || availableEpisodes.length === 0 || resolvedEpisode === null) {
+      return;
+    }
 
-  // Handle language change
+    const shouldCanonicalize =
+      requestedEpisode !== resolvedEpisode || queryLanguage !== language;
+
+    if (shouldCanonicalize) {
+      navigate(`/episode/${resolvedEpisode}?lang=${language}`, { replace: true });
+    }
+  }, [
+    availableEpisodes.length,
+    indexState.loading,
+    language,
+    navigate,
+    queryLanguage,
+    requestedEpisode,
+    resolvedEpisode,
+  ]);
+
   useEffect(() => {
-    loadEpisode(currentEpisode);
-  }, [language, loadEpisode]);
-
-  const handleNextEpisode = async () => {
-    const nextEp = currentEpisode + 1;
-    if (nextEp <= totalEpisodes) {
-      await loadEpisode(nextEp);
+    if (indexState.loading || availableEpisodes.length === 0 || resolvedEpisode === null) {
+      return;
     }
-  };
 
-  const handlePrevEpisode = async () => {
-    const prevEp = currentEpisode - 1;
-    if (prevEp >= 1) {
-      await loadEpisode(prevEp);
+    let isCancelled = false;
+    const abortController = new AbortController();
+
+    async function loadEpisode() {
+      setEpisodeState((previousState) => ({
+        ...previousState,
+        loading: true,
+        error: '',
+      }));
+
+      try {
+        const episode = await fetchEpisode(language, resolvedEpisode, { signal: abortController.signal });
+        if (isCancelled) {
+          return;
+        }
+
+        if (!episode) {
+          setEpisodeState({
+            loading: false,
+            error: languageCopy.loadErrorFallback,
+            title: `${languageCopy.episodeLabel} ${formatEpisodeNumber(resolvedEpisode)}`,
+            content: '',
+          });
+          return;
+        }
+
+        const episodeTitle =
+          extractTitle(episode.content) ||
+          `${languageCopy.episodeLabel} ${formatEpisodeNumber(resolvedEpisode)}`;
+
+        setEpisodeState({
+          loading: false,
+          error: '',
+          title: episodeTitle,
+          content: episode.content,
+        });
+        setPageIndex(0);
+        setJumpValue(String(resolvedEpisode));
+        setFlipFailed(false);
+      } catch (error) {
+        if (isCancelled || error.name === 'AbortError') {
+          return;
+        }
+        setEpisodeState({
+          loading: false,
+          error: error.message || languageCopy.loadErrorFallback,
+          title: `${languageCopy.episodeLabel} ${formatEpisodeNumber(resolvedEpisode)}`,
+          content: '',
+        });
+      }
     }
-  };
 
-  const handleEpisodeInputChange = (e) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value >= 1 && value <= totalEpisodes) {
-      loadEpisode(value);
+    loadEpisode();
+    return () => {
+      isCancelled = true;
+      abortController.abort();
+    };
+  }, [
+    availableEpisodes.length,
+    episodeReloadToken,
+    indexState.loading,
+    language,
+    languageCopy.episodeLabel,
+    languageCopy.loadErrorFallback,
+    resolvedEpisode,
+  ]);
+
+  useEffect(() => {
+    if (resolvedEpisode !== null) {
+      setJumpValue(String(resolvedEpisode));
     }
-  };
+  }, [resolvedEpisode]);
 
-  const onFlip = (e) => {
-    setPageNumber(e.data + 1);
-  };
+  const isMobile = viewport.width < MOBILE_BREAKPOINT;
+  const maxCharsPerPage = isMobile ? 2100 : 3200;
+  const pages = useMemo(
+    () => splitIntoPages(episodeState.content, maxCharsPerPage),
+    [episodeState.content, maxCharsPerPage],
+  );
 
-  // Calculate book dimensions based on viewport
-  const getBookDimensions = () => {
-    const padding = 32;
-    const maxWidth = isMobile ? window.innerWidth - padding : Math.min(window.innerWidth - 100, 1200);
-    const maxHeight = window.innerHeight - 200;
-    
-    if (isMobile) {
-      // Single page on mobile
-      return {
-        width: Math.min(maxWidth, 400),
-        height: Math.min(maxHeight, 600),
-        showCover: true,
-        mobileScrollSupport: true
-      };
-    } else {
-      // Two page spread on desktop
-      const pageWidth = Math.min(maxWidth / 2, 500);
-      const pageHeight = Math.min(maxHeight, 700);
-      return {
-        width: pageWidth,
-        height: pageHeight,
-        showCover: false,
-        mobileScrollSupport: true
-      };
+  useEffect(() => {
+    setPageIndex((currentIndex) => {
+      if (pages.length === 0) {
+        return 0;
+      }
+      return Math.min(currentIndex, pages.length - 1);
+    });
+  }, [pages.length]);
+
+  const simpleMode = manualSimpleMode || flipFailed || pages.length < 2;
+
+  useEffect(() => {
+    if (simpleMode || pages.length === 0) {
+      return;
     }
+    const pageFlipApi = flipBookRef.current?.pageFlip?.();
+    if (!pageFlipApi || typeof pageFlipApi.flip !== 'function') {
+      return;
+    }
+
+    try {
+      pageFlipApi.flip(0);
+    } catch (error) {
+      console.error('Flipbook reset failed, switching to fallback mode:', error);
+      setFlipFailed(true);
+    }
+  }, [language, pages.length, resolvedEpisode, simpleMode]);
+
+  const dimensions = useMemo(() => getBookDimensions(isMobile, viewport), [isMobile, viewport]);
+
+  const previousEpisode = useMemo(
+    () => getAdjacentEpisode(availableEpisodes, resolvedEpisode, -1),
+    [availableEpisodes, resolvedEpisode],
+  );
+  const nextEpisode = useMemo(
+    () => getAdjacentEpisode(availableEpisodes, resolvedEpisode, 1),
+    [availableEpisodes, resolvedEpisode],
+  );
+
+  const handleGoToEpisode = useCallback(
+    (targetEpisode) => {
+      const closestEpisode = findNearestEpisode(availableEpisodes, targetEpisode);
+      if (closestEpisode !== null) {
+        navigate(`/episode/${closestEpisode}?lang=${language}`);
+      }
+    },
+    [availableEpisodes, language, navigate],
+  );
+
+  const handleLanguageChange = useCallback(
+    (targetLanguage) => {
+      const normalizedTargetLanguage = normalizeLanguage(targetLanguage);
+      if (normalizedTargetLanguage === language) {
+        return;
+      }
+
+      const targetEpisodes = getAvailableEpisodes(indexState.data, normalizedTargetLanguage);
+      const fallbackEpisode = findNearestEpisode(
+        targetEpisodes,
+        resolvedEpisode ?? requestedEpisode ?? firstAvailableEpisode,
+      );
+      if (fallbackEpisode === null) {
+        return;
+      }
+
+      navigate(`/episode/${fallbackEpisode}?lang=${normalizedTargetLanguage}`);
+    },
+    [firstAvailableEpisode, indexState.data, language, navigate, requestedEpisode, resolvedEpisode],
+  );
+
+  const handleJumpSubmit = (event) => {
+    event.preventDefault();
+    const parsedEpisode = Number.parseInt(jumpValue, 10);
+    if (!Number.isInteger(parsedEpisode)) {
+      setJumpValue(String(resolvedEpisode ?? firstAvailableEpisode));
+      return;
+    }
+    handleGoToEpisode(parsedEpisode);
   };
 
-  const dims = getBookDimensions();
-  const PageComponent = language === 'burmese' ? BurmesePage : Page;
+  const handleFlipEvent = useCallback((event) => {
+    const nextPageIndex = Number.parseInt(String(event?.data), 10);
+    if (Number.isInteger(nextPageIndex) && nextPageIndex >= 0) {
+      setPageIndex(nextPageIndex);
+    }
+  }, []);
+
+  const handleFallbackPageChange = useCallback(
+    (nextPageIndex) => {
+      if (pages.length === 0) {
+        return;
+      }
+      const boundedIndex = Math.min(Math.max(nextPageIndex, 0), pages.length - 1);
+      setPageIndex(boundedIndex);
+    },
+    [pages.length],
+  );
+
+  const handleModeToggle = () => {
+    if (simpleMode) {
+      if (pages.length > 1) {
+        setFlipFailed(false);
+        setManualSimpleMode(false);
+      }
+      return;
+    }
+    setManualSimpleMode(true);
+  };
+
+  const modeToggleLabel = simpleMode
+    ? flipFailed
+      ? 'Retry flip view'
+      : 'Enable flip view'
+    : 'Use simple view';
+
+  const episodeAdjusted = requestedEpisode !== null && resolvedEpisode !== null && requestedEpisode !== resolvedEpisode;
 
   return (
-    <div className="h-full w-full flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100">
-      {/* Header */}
-      <header className="flex-none bg-book-dark text-amber-100 px-4 py-3 shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-lg md:text-xl font-bold truncate">
-            Renegade Immortal
-          </h1>
-          
-          {/* Language Toggle */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs md:text-sm opacity-70">Language:</span>
-            <div className="flex bg-amber-900/50 rounded-lg p-1">
+    <div className="h-[100dvh] w-full overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100">
+      <div className="flex h-full flex-col">
+        <header className="flex-none bg-book-dark px-4 py-3 text-amber-100 shadow-lg">
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-lg font-bold md:text-xl">Renegade Immortal</h1>
+              <p className="text-xs opacity-70 md:text-sm">
+                {languageCopy.languageLabel}: {languageCopy.name} ({availableEpisodes.length} episodes)
+              </p>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-amber-900/50 p-1">
               <button
-                onClick={() => setLanguage('eng')}
-                className={`px-3 py-1 rounded text-xs md:text-sm transition-all ${
-                  language === 'eng' 
-                    ? 'bg-amber-600 text-white' 
+                type="button"
+                onClick={() => handleLanguageChange('eng')}
+                className={`rounded px-3 py-1.5 text-xs transition-all md:text-sm ${
+                  language === 'eng'
+                    ? 'bg-amber-600 text-white'
                     : 'text-amber-200 hover:text-white'
                 }`}
               >
                 English
               </button>
               <button
-                onClick={() => setLanguage('burmese')}
-                className={`px-3 py-1 rounded text-xs md:text-sm transition-all ${
-                  language === 'burmese' 
-                    ? 'bg-amber-600 text-white' 
+                type="button"
+                onClick={() => handleLanguageChange('burmese')}
+                className={`rounded px-3 py-1.5 text-xs transition-all md:text-sm ${
+                  language === 'burmese'
+                    ? 'bg-amber-600 text-white'
                     : 'text-amber-200 hover:text-white'
                 }`}
               >
@@ -190,141 +488,210 @@ const BookReader = ({ language, setLanguage }) => {
               </button>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Episode Info Bar */}
-      <div className="flex-none bg-amber-100 border-b border-amber-200 px-4 py-2">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrevEpisode}
-              disabled={currentEpisode <= 1 || loading}
-              className="px-3 py-1 bg-book-accent text-white rounded text-sm disabled:opacity-50 hover:bg-amber-800 transition-colors"
-            >
-              ← Prev
-            </button>
-            
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-book-text font-medium">
-                {language === 'burmese' ? 'အပိုင်း' : 'Ep'}:
-              </label>
-              <input
-                type="number"
-                min="1"
-                max={totalEpisodes}
-                value={currentEpisode}
-                onChange={handleEpisodeInputChange}
-                className="w-16 px-2 py-1 text-sm border border-amber-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-book-accent"
-              />
-              <span className="text-sm text-book-text">/ {totalEpisodes}</span>
+        <section className="flex-none border-b border-amber-200 bg-amber-100 px-4 py-2">
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleGoToEpisode(firstAvailableEpisode)}
+                disabled={indexState.loading || resolvedEpisode === firstAvailableEpisode}
+                className="rounded bg-book-accent px-2.5 py-1 text-sm text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                ⏮
+              </button>
+              <button
+                type="button"
+                onClick={() => previousEpisode !== null && handleGoToEpisode(previousEpisode)}
+                disabled={indexState.loading || previousEpisode === null}
+                className="rounded bg-book-accent px-3 py-1 text-sm text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                ← Prev
+              </button>
+              <form className="flex items-center gap-2" onSubmit={handleJumpSubmit}>
+                <label className="text-sm font-medium text-book-text" htmlFor="episode-input">
+                  {languageCopy.episodeLabel}
+                </label>
+                <input
+                  id="episode-input"
+                  type="number"
+                  min={firstAvailableEpisode}
+                  max={lastAvailableEpisode}
+                  value={jumpValue}
+                  onChange={(event) => setJumpValue(event.target.value)}
+                  className="w-20 rounded border border-amber-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-book-accent"
+                />
+                <button
+                  type="submit"
+                  disabled={indexState.loading}
+                  className="rounded border border-amber-600 px-2 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Go
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={() => nextEpisode !== null && handleGoToEpisode(nextEpisode)}
+                disabled={indexState.loading || nextEpisode === null}
+                className="rounded bg-book-accent px-3 py-1 text-sm text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Next →
+              </button>
+              <button
+                type="button"
+                onClick={() => handleGoToEpisode(lastAvailableEpisode)}
+                disabled={indexState.loading || resolvedEpisode === lastAvailableEpisode}
+                className="rounded bg-book-accent px-2.5 py-1 text-sm text-white transition-colors hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                ⏭
+              </button>
             </div>
-            
-            <button
-              onClick={handleNextEpisode}
-              disabled={currentEpisode >= totalEpisodes || loading}
-              className="px-3 py-1 bg-book-accent text-white rounded text-sm disabled:opacity-50 hover:bg-amber-800 transition-colors"
-            >
-              Next →
-            </button>
+            <div className="max-w-full truncate text-sm text-book-text">
+              {episodeState.loading ? languageCopy.loadingEpisode : episodeState.title}
+            </div>
           </div>
-          
-          <div className="text-sm text-book-text truncate max-w-xs md:max-w-md">
-            {loading ? (
-              <span className="italic">Loading...</span>
-            ) : (
-              episodeTitle
-            )}
-          </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Main Book Area */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
-        {loading ? (
-          <div className="text-center">
-            <div className="inline-block w-12 h-12 border-4 border-book-accent border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-book-text">
-              {language === 'burmese' ? 'ဖတ်ရှုနေသည်...' : 'Loading...'}
-            </p>
-          </div>
-        ) : error ? (
-          <div className="text-center p-8 bg-red-50 rounded-lg border border-red-200">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={() => loadEpisode(1)}
-              className="px-4 py-2 bg-book-accent text-white rounded hover:bg-amber-800 transition-colors"
-            >
-              {language === 'burmese' ? 'ပထမဆုံး အပိုင်းသို့' : 'Go to First Episode'}
-            </button>
-          </div>
-        ) : pages.length > 0 ? (
-          <div className="book-container">
-            <HTMLFlipBook
-              ref={flipBookRef}
-              width={dims.width}
-              height={dims.height}
-              size="fixed"
-              minWidth={200}
-              maxWidth={600}
-              minHeight={300}
-              maxHeight={800}
-              maxShadowOpacity={0.5}
-              showCover={dims.showCover}
-              mobileScrollSupport={dims.mobileScrollSupport}
-              onFlip={onFlip}
-              className="shadow-2xl"
-              style={{}}
-              startPage={0}
-              drawShadow={true}
-              flippingTime={800}
-              usePortrait={isMobile}
-              startZIndex={0}
-              autoSize={true}
-              clickEventForward={true}
-              useMouseEvents={true}
-              swipeDistance={30}
-              showPageCorners={true}
-              disableFlipByClick={false}
-            >
-              {pages.map((pageContent, index) => (
-                <PageComponent key={index} pageNumber={index + 1}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {pageContent}
-                  </ReactMarkdown>
-                </PageComponent>
-              ))}
-            </HTMLFlipBook>
-          </div>
-        ) : (
-          <div className="text-center text-book-text">
-            {language === 'burmese' 
-              ? 'မည်သည့်အကြောင်းအရာမှ မရှိပါ' 
-              : 'No content available'}
+        {episodeAdjusted && (
+          <div className="flex-none border-b border-amber-300 bg-amber-200/70 px-4 py-2 text-sm text-book-text">
+            <div className="mx-auto w-full max-w-7xl">
+              {languageCopy.unavailableHint} ({formatEpisodeNumber(requestedEpisode)} →{' '}
+              {formatEpisodeNumber(resolvedEpisode)})
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Footer Controls */}
-      <div className="flex-none bg-book-dark text-amber-100 px-4 py-2">
-        <div className="max-w-7xl mx-auto flex items-center justify-between text-sm">
-          <div>
-            {language === 'burmese' ? 'စာမျက်နှာ' : 'Page'} {pageNumber} {language === 'burmese' ? '' : 'of'} {pages.length}
+        <main className="min-h-0 flex-1 px-4 py-4">
+          <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-center">
+            {indexState.loading ? (
+              <div className="text-center">
+                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-book-accent border-t-transparent" />
+                <p className="text-book-text">Loading episode index...</p>
+              </div>
+            ) : indexState.error ? (
+              <div className="max-w-xl rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+                <p className="mb-4 text-red-700">{indexState.error}</p>
+                <button
+                  type="button"
+                  onClick={() => setIndexReloadToken((token) => token + 1)}
+                  className="rounded bg-book-accent px-4 py-2 text-white transition-colors hover:bg-amber-800"
+                >
+                  Reload index
+                </button>
+              </div>
+            ) : episodeState.loading ? (
+              <div className="text-center">
+                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-book-accent border-t-transparent" />
+                <p className="text-book-text">{languageCopy.loadingEpisode}</p>
+              </div>
+            ) : episodeState.error ? (
+              <div className="max-w-xl rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+                <p className="mb-4 text-red-700">{episodeState.error}</p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEpisodeReloadToken((token) => token + 1)}
+                    className="rounded bg-book-accent px-4 py-2 text-white transition-colors hover:bg-amber-800"
+                  >
+                    {languageCopy.retry}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleGoToEpisode(firstAvailableEpisode)}
+                    className="rounded border border-amber-700 px-4 py-2 text-book-text transition-colors hover:bg-amber-100"
+                  >
+                    {languageCopy.episodeLabel} {formatEpisodeNumber(firstAvailableEpisode)}
+                  </button>
+                </div>
+              </div>
+            ) : pages.length === 0 ? (
+              <p className="text-book-text">{languageCopy.noContent}</p>
+            ) : simpleMode ? (
+              <SimpleReaderView
+                language={language}
+                pages={pages}
+                pageIndex={pageIndex}
+                onPageChange={handleFallbackPageChange}
+              />
+            ) : (
+              <FlipBookErrorBoundary
+                resetKey={`${language}-${resolvedEpisode}-${pages.length}`}
+                onError={() => setFlipFailed(true)}
+                fallback={
+                  <SimpleReaderView
+                    language={language}
+                    pages={pages}
+                    pageIndex={pageIndex}
+                    onPageChange={handleFallbackPageChange}
+                  />
+                }
+              >
+                <div className="book-container">
+                  <HTMLFlipBook
+                    ref={flipBookRef}
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    size="fixed"
+                    minWidth={220}
+                    maxWidth={620}
+                    minHeight={340}
+                    maxHeight={840}
+                    maxShadowOpacity={0.45}
+                    showCover={dimensions.showCover}
+                    mobileScrollSupport
+                    onFlip={handleFlipEvent}
+                    className="shadow-2xl"
+                    drawShadow
+                    flippingTime={700}
+                    usePortrait={isMobile}
+                    startZIndex={0}
+                    autoSize
+                    clickEventForward
+                    useMouseEvents
+                    swipeDistance={24}
+                    showPageCorners
+                  >
+                    {pages.map((pageContent, index) => (
+                      <MarkdownPage
+                        key={`${resolvedEpisode}-${index}`}
+                        language={language}
+                        pageNumber={index + 1}
+                        content={pageContent}
+                      />
+                    ))}
+                  </HTMLFlipBook>
+                </div>
+              </FlipBookErrorBoundary>
+            )}
           </div>
-          <div className="flex items-center gap-4">
-            <span className="hidden md:inline opacity-70">
-              {language === 'burmese' 
-                ? 'စာမျက်နှာများကို လှန်ရန် နовал် ညာဘက်ကို နှိပ်ပါ' 
-                : 'Click or swipe to turn pages'}
-            </span>
-            <span className="md:hidden opacity-70">
-              {language === 'burmese' ? 'လှန်ရန် စာမျက်နှာကို ထိပါ' : 'Tap to flip'}
-            </span>
+        </main>
+
+        <footer className="flex-none bg-book-dark px-4 py-2 text-amber-100">
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 text-sm">
+            <p>
+              {languageCopy.pageLabel} {Math.min(pageIndex + 1, Math.max(pages.length, 1))} /{' '}
+              {Math.max(pages.length, 1)}
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleModeToggle}
+                disabled={pages.length < 2 && simpleMode}
+                className="rounded border border-amber-300/70 px-2 py-1 text-xs transition-colors hover:bg-amber-100/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {pages.length < 2 && simpleMode ? 'Single page mode' : modeToggleLabel}
+              </button>
+              <p className="hidden opacity-75 md:block">
+                {isMobile ? languageCopy.clickHintMobile : languageCopy.clickHintDesktop}
+              </p>
+              <p className="opacity-75 md:hidden">{languageCopy.shortName}</p>
+            </div>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );
-};
+}
 
 export default BookReader;

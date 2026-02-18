@@ -5,8 +5,10 @@
   "type": "module",
   "homepage": "https://yourusername.github.io/your-repo-name",
   "scripts": {
+    "sync:episodes": "node scripts/sync-episodes.mjs",
+    "predev": "npm run sync:episodes",
     "dev": "vite",
-    "prebuild": "node scripts/sync-episodes.mjs",
+    "prebuild": "npm run sync:episodes",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
