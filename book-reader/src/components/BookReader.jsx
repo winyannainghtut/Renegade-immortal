@@ -549,6 +549,11 @@ function BookReader() {
 
       const nextIndex = Math.min(Math.max(pageIndex + direction, 0), pages.length - 1);
       if (nextIndex === pageIndex) {
+        if (direction > 0 && nextEpisode !== null) {
+          handleGoToEpisode(nextEpisode);
+        } else if (direction < 0 && previousEpisode !== null) {
+          handleGoToEpisode(previousEpisode);
+        }
         return;
       }
 
@@ -574,7 +579,7 @@ function BookReader() {
 
       setPageIndex(nextIndex);
     },
-    [pageIndex, pages.length, simpleMode],
+    [handleGoToEpisode, nextEpisode, pageIndex, pages.length, previousEpisode, simpleMode],
   );
 
   const modeToggleLabel = simpleMode
