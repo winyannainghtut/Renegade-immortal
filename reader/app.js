@@ -14,6 +14,9 @@
   const LEGACY_PROGRESS_KEY = "novel_reader_scroll_progress_v1";
   const SYSTEM_THEME_QUERY = window.matchMedia("(prefers-color-scheme: dark)");
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
+  const FONT_SIZE_MIN = 14;
+  const FONT_SIZE_MAX = 32;
+  const FONT_SIZE_STEP = 1;
 
   const defaultSettings = {
     theme: "system",
@@ -64,7 +67,9 @@
     toolbar: document.getElementById("toolbar"),
     themeSelect: document.getElementById("themeSelect"),
     fontSelect: document.getElementById("fontSelect"),
+    decreaseFontSizeBtn: document.getElementById("decreaseFontSizeBtn"),
     fontSizeRange: document.getElementById("fontSizeRange"),
+    increaseFontSizeBtn: document.getElementById("increaseFontSizeBtn"),
     fontSizeValue: document.getElementById("fontSizeValue"),
     lineHeightRange: document.getElementById("lineHeightRange"),
     lineHeightValue: document.getElementById("lineHeightValue"),
@@ -110,10 +115,20 @@
     });
 
     els.fontSizeRange.addEventListener("input", () => {
-      state.settings.fontSize = clamp(Number(els.fontSizeRange.value), 14, 32);
-      applyTypography();
-      saveSettings();
+      setFontSize(els.fontSizeRange.value);
     });
+
+    if (els.decreaseFontSizeBtn) {
+      els.decreaseFontSizeBtn.addEventListener("click", () => {
+        setFontSize(Number(state.settings.fontSize) - FONT_SIZE_STEP);
+      });
+    }
+
+    if (els.increaseFontSizeBtn) {
+      els.increaseFontSizeBtn.addEventListener("click", () => {
+        setFontSize(Number(state.settings.fontSize) + FONT_SIZE_STEP);
+      });
+    }
 
     els.lineHeightRange.addEventListener("input", () => {
       state.settings.lineHeight = clamp(Number(els.lineHeightRange.value), 1.35, 2.2);
@@ -784,20 +799,41 @@
     document.documentElement.setAttribute("data-theme", resolved);
   }
 
+  function setFontSize(value) {
+    state.settings.fontSize = clamp(Number(value), FONT_SIZE_MIN, FONT_SIZE_MAX);
+    applyTypography();
+    saveSettings();
+  }
+
+  function updateFontSizeButtons(value) {
+    const fontSize = clamp(Number(value), FONT_SIZE_MIN, FONT_SIZE_MAX);
+
+    if (els.decreaseFontSizeBtn) {
+      els.decreaseFontSizeBtn.disabled = fontSize <= FONT_SIZE_MIN;
+    }
+
+    if (els.increaseFontSizeBtn) {
+      els.increaseFontSizeBtn.disabled = fontSize >= FONT_SIZE_MAX;
+    }
+  }
+
   function applyTypography() {
-    const fontSize = clamp(Number(state.settings.fontSize), 14, 32);
+    const fontSize = clamp(Number(state.settings.fontSize), FONT_SIZE_MIN, FONT_SIZE_MAX);
     const lineHeight = clamp(Number(state.settings.lineHeight), 1.35, 2.2);
     const width = clamp(Number(state.settings.width), 560, 1080);
     const fontFamily = fontMap[state.settings.font] || fontMap.serif;
 
+    state.settings.fontSize = fontSize;
     document.documentElement.style.setProperty("--reader-font-size", `${fontSize}px`);
     document.documentElement.style.setProperty("--reader-line-height", `${lineHeight}`);
     document.documentElement.style.setProperty("--reader-width", `${width}px`);
     document.documentElement.style.setProperty("--reader-font", fontFamily);
 
+    els.fontSizeRange.value = String(fontSize);
     els.fontSizeValue.textContent = `${fontSize}px`;
     els.lineHeightValue.textContent = lineHeight.toFixed(2);
     els.widthValue.textContent = `${width}px`;
+    updateFontSizeButtons(fontSize);
   }
 
   function normalizeTheme(value) {
@@ -818,7 +854,7 @@
     return {
       theme: normalizeTheme(source.theme),
       font: normalizeFont(source.font),
-      fontSize: clamp(Number(source.fontSize), 14, 32),
+      fontSize: clamp(Number(source.fontSize), FONT_SIZE_MIN, FONT_SIZE_MAX),
       lineHeight: clamp(Number(source.lineHeight), 1.35, 2.2),
       width: clamp(Number(source.width), 560, 1080),
       source: asNonEmptyString(source.source) || "all"

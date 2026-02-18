@@ -113,10 +113,16 @@
               </select>
             </label>
 
-            <label for="fontSizeRange">
-              Font Size <span id="fontSizeValue"></span>
-              <input id="fontSizeRange" type="range" min="14" max="32" step="1">
-            </label>
+            <div class="setting-field">
+              <label for="fontSizeRange">
+                Font Size <span id="fontSizeValue"></span>
+              </label>
+              <div class="font-size-stepper">
+                <button class="icon-btn icon-only stepper-btn" id="decreaseFontSizeBtn" type="button" aria-label="Decrease font size" title="Decrease font size">-</button>
+                <input id="fontSizeRange" type="range" min="14" max="32" step="1">
+                <button class="icon-btn icon-only stepper-btn" id="increaseFontSizeBtn" type="button" aria-label="Increase font size" title="Increase font size">+</button>
+              </div>
+            </div>
 
             <label for="lineHeightRange">
               Line Height <span id="lineHeightValue"></span>

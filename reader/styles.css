@@ -296,7 +296,8 @@ select:focus {
   row-gap: 10px;
 }
 
-.settings-grid label {
+.settings-grid > label,
+.settings-grid > .setting-field {
   display: grid;
   gap: 4px;
   color: var(--muted);
@@ -304,8 +305,37 @@ select:focus {
   min-width: 128px;
 }
 
+.setting-field > label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
 .settings-grid input[type="range"] {
   width: 138px;
+}
+
+.font-size-stepper {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 6px;
+}
+
+.font-size-stepper input[type="range"] {
+  width: 100%;
+  min-width: 0;
+}
+
+.font-size-stepper .stepper-btn {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .icon-btn {
@@ -508,7 +538,8 @@ select:focus {
 
 
 @media (max-width: 1180px) {
-  .settings-grid label {
+  .settings-grid > label,
+  .settings-grid > .setting-field {
     min-width: 116px;
   }
 
@@ -603,7 +634,8 @@ select:focus {
     padding-right: 2px;
   }
 
-  .settings-grid label {
+  .settings-grid > label,
+  .settings-grid > .setting-field {
     min-width: 122px;
     font-size: 0.76rem;
   }
@@ -695,7 +727,8 @@ select:focus {
     gap: 8px;
   }
 
-  .settings-grid label {
+  .settings-grid > label,
+  .settings-grid > .setting-field {
     min-width: 112px;
   }
 
