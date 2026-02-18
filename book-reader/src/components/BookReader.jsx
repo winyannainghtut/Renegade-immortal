@@ -541,6 +541,42 @@ function BookReader() {
     setManualSimpleMode(true);
   };
 
+  const handlePageStep = useCallback(
+    (direction) => {
+      if (pages.length === 0) {
+        return;
+      }
+
+      const nextIndex = Math.min(Math.max(pageIndex + direction, 0), pages.length - 1);
+      if (nextIndex === pageIndex) {
+        return;
+      }
+
+      if (simpleMode) {
+        setPageIndex(nextIndex);
+        return;
+      }
+
+      const pageFlipApi = flipBookRef.current?.pageFlip?.();
+      try {
+        if (pageFlipApi && typeof pageFlipApi.flip === 'function') {
+          pageFlipApi.flip(nextIndex);
+          return;
+        }
+        if (pageFlipApi && typeof pageFlipApi.turnToPage === 'function') {
+          pageFlipApi.turnToPage(nextIndex);
+          return;
+        }
+      } catch (error) {
+        console.error('Manual page step failed, fallback to simple mode:', error);
+        setFlipFailed(true);
+      }
+
+      setPageIndex(nextIndex);
+    },
+    [pageIndex, pages.length, simpleMode],
+  );
+
   const modeToggleLabel = simpleMode
     ? flipFailed
       ? 'Retry flip view'
@@ -767,10 +803,28 @@ function BookReader() {
 
         <footer className="flex-none bg-book-dark px-4 py-2 text-amber-100">
           <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 text-sm">
-            <p>
-              {languageCopy.pageLabel} {Math.min(pageIndex + 1, Math.max(pages.length, 1))} /{' '}
-              {Math.max(pages.length, 1)}
-            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handlePageStep(-1)}
+                disabled={pageIndex <= 0 || pages.length < 2}
+                className="rounded border border-amber-300/70 px-2 py-1 text-xs transition-colors hover:bg-amber-100/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ← Page
+              </button>
+              <p>
+                {languageCopy.pageLabel} {Math.min(pageIndex + 1, Math.max(pages.length, 1))} /{' '}
+                {Math.max(pages.length, 1)}
+              </p>
+              <button
+                type="button"
+                onClick={() => handlePageStep(1)}
+                disabled={pageIndex >= pages.length - 1 || pages.length < 2}
+                className="rounded border border-amber-300/70 px-2 py-1 text-xs transition-colors hover:bg-amber-100/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Page →
+              </button>
+            </div>
             <div className="flex items-center gap-3">
               <button
                 type="button"
