@@ -18,7 +18,13 @@
           <h1>Novel Reader</h1>
           <p class="meta" id="libraryMeta">Loading chapters...</p>
         </div>
-        <button class="icon-btn mobile-only" id="closeSidebarBtn" type="button" aria-label="Close library">Close</button>
+        <button class="icon-btn icon-only mobile-only" id="closeSidebarBtn" type="button" aria-label="Close library" title="Close library">
+          <svg class="icon-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6L6 18"></path>
+          </svg>
+          <span class="sr-only">Close library</span>
+        </button>
       </div>
 
       <label class="search-wrap" for="searchInput">
@@ -38,7 +44,7 @@
       <div class="reader-content-layer" id="readerViewport">
         <section class="chapter-meta">
           <h2 id="chapterTitle">Select a chapter from the library</h2>
-          <p id="chapterInfo">Use search and source filters to quickly find episodes.</p>
+          <p id="chapterInfo" class="sr-only" aria-live="polite">Use search and source filters to quickly find episodes.</p>
         </section>
 
         <section class="content-stage" id="contentStage">
@@ -51,10 +57,36 @@
       <header class="toolbar hud-layer" id="toolbar">
         <div class="toolbar-row toolbar-primary">
           <div class="toolbar-group">
-            <button class="icon-btn mobile-only" id="openSidebarBtn" type="button">Library</button>
-            <button class="icon-btn" id="prevBtn" type="button">Previous</button>
-            <button class="icon-btn" id="nextBtn" type="button">Next</button>
-            <button class="icon-btn" id="toggleSettingsBtn" type="button" aria-controls="settingsPanel" aria-expanded="false">Settings</button>
+            <button class="icon-btn icon-only mobile-only" id="openSidebarBtn" type="button" aria-label="Open library" title="Open library">
+              <svg class="icon-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <rect x="4.5" y="4.5" width="4" height="15" rx="1"></rect>
+                <rect x="10" y="4.5" width="4" height="15" rx="1"></rect>
+                <rect x="15.5" y="4.5" width="4" height="15" rx="1"></rect>
+                <path d="M4 19.5h16"></path>
+              </svg>
+              <span class="sr-only">Open library</span>
+            </button>
+            <button class="icon-btn icon-only" id="prevBtn" type="button" aria-label="Previous chapter" title="Previous chapter">
+              <svg class="icon-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M15 6l-6 6 6 6"></path>
+              </svg>
+              <span class="sr-only">Previous chapter</span>
+            </button>
+            <button class="icon-btn icon-only" id="nextBtn" type="button" aria-label="Next chapter" title="Next chapter">
+              <svg class="icon-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M9 6l6 6-6 6"></path>
+              </svg>
+              <span class="sr-only">Next chapter</span>
+            </button>
+            <button class="icon-btn icon-only" id="toggleSettingsBtn" type="button" aria-controls="settingsPanel" aria-expanded="false" aria-label="Open settings" title="Open settings">
+              <svg class="icon-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M4 7h16"></path>
+                <path d="M4 17h16"></path>
+                <circle cx="9" cy="7" r="2"></circle>
+                <circle cx="15" cy="17" r="2"></circle>
+              </svg>
+              <span class="sr-only">Toggle settings</span>
+            </button>
           </div>
         </div>
 

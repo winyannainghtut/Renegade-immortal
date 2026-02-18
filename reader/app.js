@@ -210,6 +210,9 @@
     state.settingsOpen = Boolean(open);
     els.settingsPanel.hidden = !state.settingsOpen;
     els.toggleSettingsBtn.setAttribute("aria-expanded", state.settingsOpen ? "true" : "false");
+    const settingsLabel = state.settingsOpen ? "Close settings" : "Open settings";
+    els.toggleSettingsBtn.setAttribute("aria-label", settingsLabel);
+    els.toggleSettingsBtn.title = settingsLabel;
   }
 
   function syncResponsiveState() {
@@ -494,9 +497,7 @@
       const html = renderMarkdownToSafeHtml(markdown, entry.path);
       renderChapterContent(html, { useSavedPosition: true });
 
-      const words = countWords(markdown);
-      const minutes = Math.max(1, Math.round(words / 220));
-      setChapterMeta(entry, `${words.toLocaleString()} words | ~${minutes} min read`);
+      setChapterMeta(entry, "Chapter loaded.");
 
       if (closeSidebarOnMobile) {
         setSidebarOpen(false);
@@ -706,9 +707,7 @@
 
   function setChapterMeta(entry, detail) {
     els.chapterTitle.textContent = entry ? entry.title : "Select a chapter";
-    els.chapterInfo.textContent = entry
-      ? `${entry.sourceLabel} | ${entry.path} | ${detail}`
-      : detail;
+    els.chapterInfo.textContent = detail;
   }
 
   function setChapterLoading(loading) {
@@ -909,10 +908,6 @@
       .join("/");
 
     return `../${safePath}`;
-  }
-
-  function countWords(text) {
-    return (text.trim().match(/\S+/g) || []).length;
   }
 
   function addMediaQueryListener(query, listener) {
