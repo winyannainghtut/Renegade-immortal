@@ -1,0 +1,103 @@
+name: Deploy Reader to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Generate manifest
+        run: python reader/generate_manifest.py
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare site artifact
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+
+          root = Path(".")
+          site = root / "site"
+          site.mkdir(exist_ok=True)
+
+          def copy_dir_case_insensitive(name: str) -> None:
+              match = next(
+                  (p for p in root.iterdir() if p.is_dir() and p.name.lower() == name.lower()),
+                  None,
+              )
+              if not match:
+                  print(f"Skipping missing directory: {name}")
+                  return
+
+              destination = site / match.name
+              if destination.exists():
+                  shutil.rmtree(destination)
+              shutil.copytree(match, destination)
+              print(f"Copied: {match} -> {destination}")
+
+          copy_dir_case_insensitive("reader")
+          copy_dir_case_insensitive("eng-episodes")
+          copy_dir_case_insensitive("burmese-episodes")
+
+          # Make the Pages root URL open the reader directly.
+          (site / "index.html").write_text(
+              "<!doctype html><meta charset='utf-8'>"
+              "<meta http-equiv='refresh' content='0; url=./reader/'>"
+              "<title>Novel Reader</title>"
+              "<a href='./reader/'>Open Novel Reader</a>",
+              encoding="utf-8",
+          )
+          (site / ".nojekyll").touch()
+
+          reader_index = site / "reader" / "index.html"
+          if not reader_index.exists():
+              raise SystemExit(f"Missing required file: {reader_index}")
+          PY
+
+      - name: Show artifact summary
+        run: |
+          echo "Top-level site contents:"
+          ls -la site
+          echo ""
+          echo "Site size:"
+          du -sh site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
