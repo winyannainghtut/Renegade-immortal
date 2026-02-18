@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Full frame setup - no scrollbars */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Custom scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Page flip book styles */
+.book-container {
+  perspective: 1500px;
+}
+
+.page {
+  background: linear-gradient(to right, #f5f1e6 0%, #faf8f3 50%, #f5f1e6 100%);
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.1);
+}
+
+.page-content {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #8b4513 #f5f1e6;
+}
+
+.page-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.page-content::-webkit-scrollbar-track {
+  background: #f5f1e6;
+}
+
+.page-content::-webkit-scrollbar-thumb {
+  background: #8b4513;
+  border-radius: 3px;
+}
+
+/* Custom page flip shadow effect */
+.page-shadow {
+  box-shadow: 
+    inset 30px 0 40px -30px rgba(0,0,0,0.15),
+    inset -30px 0 40px -30px rgba(0,0,0,0.15);
+}
+
+/* Book spine effect */
+.book-spine {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.2) 0%,
+    rgba(0,0,0,0.05) 5%,
+    rgba(255,255,255,0.1) 10%,
+    rgba(0,0,0,0.1) 90%,
+    rgba(0,0,0,0.2) 100%
+  );
+}

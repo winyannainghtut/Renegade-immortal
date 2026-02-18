@@ -1,0 +1,41 @@
+{
+  "eng": {
+    "folders": [
+      {"name": "0001-0100", "start": 1, "end": 100},
+      {"name": "0101-0200", "start": 101, "end": 200},
+      {"name": "0201-0300", "start": 201, "end": 300},
+      {"name": "0301-0400", "start": 301, "end": 400},
+      {"name": "0401-0500", "start": 401, "end": 500},
+      {"name": "0501-0600", "start": 501, "end": 600},
+      {"name": "0601-0700", "start": 601, "end": 700},
+      {"name": "0701-0800", "start": 701, "end": 800},
+      {"name": "0801-0900", "start": 801, "end": 900},
+      {"name": "0901-1000", "start": 901, "end": 1000},
+      {"name": "1001-1100", "start": 1001, "end": 1100},
+      {"name": "1101-1200", "start": 1101, "end": 1200},
+      {"name": "1201-1300", "start": 1201, "end": 1300},
+      {"name": "1301-1400", "start": 1301, "end": 1400},
+      {"name": "1401-1500", "start": 1401, "end": 1500},
+      {"name": "1501-1600", "start": 1501, "end": 1600},
+      {"name": "1601-1700", "start": 1601, "end": 1700},
+      {"name": "1701-1800", "start": 1701, "end": 1800},
+      {"name": "1801-1900", "start": 1801, "end": 1900},
+      {"name": "1901-2000", "start": 1901, "end": 2000},
+      {"name": "2001-2088", "start": 2001, "end": 2088}
+    ],
+    "totalEpisodes": 2088
+  },
+  "burmese": {
+    "folders": [
+      {"name": "0001-0100", "start": 1, "end": 100}
+    ],
+    "totalEpisodes": 100
+  },
+  "metadata": {
+    "title": "Renegade Immortal (Xian Ni)",
+    "titleBurmese": "ဒုစရိုက်နတ်ဘုရား (仙逆)",
+    "author": "Er Gen",
+    "description": "A Xianxia novel about Wang Lin's journey of cultivation against the heavens.",
+    "lastUpdated": "2024-01-01"
+  }
+}
