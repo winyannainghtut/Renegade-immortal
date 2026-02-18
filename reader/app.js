@@ -17,7 +17,6 @@
   const defaultSettings = {
     theme: "system",
     font: "serif",
-    mode: "scroll",
     fontSize: 19,
     lineHeight: 1.75,
     width: 780,
@@ -56,17 +55,15 @@
     searchInput: document.getElementById("searchInput"),
     prevBtn: document.getElementById("prevBtn"),
     nextBtn: document.getElementById("nextBtn"),
+    toggleSettingsBtn: document.getElementById("toggleSettingsBtn"),
     themeSelect: document.getElementById("themeSelect"),
     fontSelect: document.getElementById("fontSelect"),
-    modeSelect: document.getElementById("modeSelect"),
     fontSizeRange: document.getElementById("fontSizeRange"),
     fontSizeValue: document.getElementById("fontSizeValue"),
     lineHeightRange: document.getElementById("lineHeightRange"),
     lineHeightValue: document.getElementById("lineHeightValue"),
     widthRange: document.getElementById("widthRange"),
     widthValue: document.getElementById("widthValue"),
-    chapterJumpWrap: document.getElementById("chapterJumpWrap"),
-    chapterJumpSelect: document.getElementById("chapterJumpSelect"),
     chapterTitle: document.getElementById("chapterTitle"),
     chapterInfo: document.getElementById("chapterInfo"),
     content: document.getElementById("content"),
@@ -104,20 +101,6 @@
       applyTypography();
     });
 
-    els.modeSelect.addEventListener("change", () => {
-      const previousMode = getReadingMode();
-      const previousRatio = getCurrentProgressRatio(previousMode);
-      persistCurrentProgress();
-
-      state.settings.mode = normalizeMode(els.modeSelect.value);
-      saveSettings();
-      applyReadingMode();
-
-      if (state.currentHtml) {
-        renderChapterContent({ useSavedPosition: true, fallbackRatio: previousRatio });
-      }
-    });
-
     els.fontSizeRange.addEventListener("input", () => {
       state.settings.fontSize = Number(els.fontSizeRange.value);
       applyTypography();
@@ -144,10 +127,8 @@
       document.body.classList.remove("sidebar-open");
     });
 
-    els.chapterJumpSelect.addEventListener("change", () => {
-      const headingId = els.chapterJumpSelect.value;
-      if (!headingId) return;
-      jumpToHeading(headingId);
+    els.toggleSettingsBtn.addEventListener("click", () => {
+      els.readerPanel.classList.toggle("show-settings");
     });
 
     document.addEventListener("keydown", (event) => {
@@ -185,7 +166,7 @@
   function handleReadProgressScroll() {
     if (!state.currentId) return;
 
-    const mode = getReadingMode();
+    const mode = "scroll";
     const position = mode === "paging"
       ? Math.max(0, els.content.scrollLeft)
       : Math.max(0, els.contentStage.scrollTop);
@@ -195,7 +176,7 @@
   }
 
   function handlePagingWheel(event) {
-    if (getReadingMode() !== "paging") return;
+    if ("scroll" !== "paging") return;
     if (event.ctrlKey || event.metaKey) return;
 
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
@@ -219,7 +200,7 @@
   }
 
   function schedulePagingLayout() {
-    if (getReadingMode() !== "paging" || !state.currentHtml) return;
+    if ("scroll" !== "paging" || !state.currentHtml) return;
 
     if (state.pagingLayoutTimer) {
       clearTimeout(state.pagingLayoutTimer);
@@ -394,31 +375,23 @@
       const message = String(error.message || error);
       setChapterMeta(entry, message);
       state.currentHtml = `<p class="empty-state">${escapeHtml(message)}</p>`;
-      renderChapterContent({ useSavedPosition: false, suppressChapterJump: true });
-      clearChapterJumpOptions();
+      renderChapterContent({ useSavedPosition: false });
     }
   }
 
   function renderChapterContent(options = {}) {
     const {
       useSavedPosition = false,
-      suppressChapterJump = false,
       fallbackRatio = null
     } = options;
 
     const html = state.currentHtml || '<p class="empty-state">Pick any markdown file to start reading.</p>';
-    const mode = getReadingMode();
+    const mode = "scroll";
 
     if (mode === "paging") {
       renderPagingContent(html);
     } else {
       renderScrollContent(html);
-    }
-
-    if (suppressChapterJump) {
-      clearChapterJumpOptions();
-    } else {
-      populateChapterJumpOptions();
     }
 
     requestAnimationFrame(() => {
@@ -531,58 +504,6 @@
     return inner.scrollHeight > inner.clientHeight + 1;
   }
 
-  function populateChapterJumpOptions() {
-    const headings = [...els.content.querySelectorAll("h1[id], h2[id], h3[id], h4[id]")];
-    clearChapterJumpOptions();
-
-    if (!headings.length) return;
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Choose a section";
-    els.chapterJumpSelect.appendChild(placeholder);
-
-    for (const heading of headings) {
-      const option = document.createElement("option");
-      const level = Number(heading.tagName.replace("H", ""));
-      const indent = level > 1 ? " ".repeat((level - 1) * 2) : "";
-      option.value = heading.id;
-      option.textContent = `${indent}${heading.textContent.trim()}`;
-      els.chapterJumpSelect.appendChild(option);
-    }
-
-    els.chapterJumpWrap.hidden = false;
-    els.chapterJumpSelect.value = "";
-  }
-
-  function clearChapterJumpOptions() {
-    els.chapterJumpSelect.innerHTML = "";
-    els.chapterJumpWrap.hidden = true;
-  }
-
-  function jumpToHeading(headingId) {
-    const target = els.content.querySelector(`#${escapeCssIdent(headingId)}`);
-    if (!target) return;
-
-    if (getReadingMode() === "paging") {
-      const page = target.closest(".page") || target;
-      page.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "start"
-      });
-      return;
-    }
-
-    const stageRect = els.contentStage.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const topOffset = targetRect.top - stageRect.top + els.contentStage.scrollTop - 28;
-    els.contentStage.scrollTo({
-      top: Math.max(0, topOffset),
-      behavior: "smooth"
-    });
-  }
-
   function setChapterMeta(entry, detail) {
     els.chapterTitle.textContent = entry ? entry.title : "Select a chapter";
     els.chapterInfo.textContent = entry ? `${entry.sourceLabel} · ${entry.path} · ${detail}` : detail;
@@ -614,12 +535,10 @@
 
   function hydrateSettingsControls() {
     const settings = { ...defaultSettings, ...state.settings };
-    settings.mode = normalizeMode(settings.mode);
     state.settings = settings;
 
     els.themeSelect.value = settings.theme;
     els.fontSelect.value = settings.font;
-    els.modeSelect.value = settings.mode;
     els.fontSizeRange.value = String(settings.fontSize);
     els.lineHeightRange.value = String(settings.lineHeight);
     els.widthRange.value = String(settings.width);
@@ -628,7 +547,6 @@
   function applyVisualSettings() {
     applyTheme();
     applyTypography();
-    applyReadingMode();
   }
 
   function applyTheme() {
@@ -657,21 +575,6 @@
     schedulePagingLayout();
   }
 
-  function applyReadingMode() {
-    const mode = normalizeMode(state.settings.mode);
-    state.settings.mode = mode;
-    els.modeSelect.value = mode;
-    els.readerPanel.dataset.readingMode = mode;
-  }
-
-  function getReadingMode() {
-    return normalizeMode(state.settings.mode);
-  }
-
-  function normalizeMode(mode) {
-    return mode === "paging" ? "paging" : "scroll";
-  }
-
   function saveSettings() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
   }
@@ -695,7 +598,7 @@
   function persistCurrentProgress() {
     if (!state.currentId) return;
 
-    const mode = getReadingMode();
+    const mode = "scroll";
     const position = mode === "paging"
       ? Math.max(0, els.content.scrollLeft)
       : Math.max(0, els.contentStage.scrollTop);

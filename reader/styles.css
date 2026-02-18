@@ -276,6 +276,15 @@ select:focus {
   flex-wrap: wrap;
 }
 
+.toolbar-secondary {
+  display: none;
+}
+
+.reader-panel.show-settings .toolbar-secondary {
+  display: flex;
+}
+
+
 .settings-grid {
   row-gap: 10px;
 }
@@ -312,26 +321,6 @@ select:focus {
 .icon-btn:hover:not(:disabled) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--surface-strong) 85%, var(--accent-soft));
-}
-
-.chapter-jump-wrap {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  border-top: 1px solid var(--line);
-  padding-top: 8px;
-}
-
-.chapter-jump-wrap label {
-  color: var(--muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.chapter-jump-wrap select {
-  width: 100%;
 }
 
 .chapter-meta,
@@ -522,14 +511,6 @@ select:focus {
   display: none;
 }
 
-@media (hover: none), (pointer: coarse) {
-  .toolbar {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translate(-50%, 0);
-  }
-}
 
 @media (max-width: 1180px) {
   .settings-grid label {
@@ -621,15 +602,6 @@ select:focus {
 
   .width-control {
     display: none;
-  }
-
-  .chapter-jump-wrap {
-    grid-template-columns: 1fr;
-    gap: 5px;
-  }
-
-  .chapter-jump-wrap label {
-    font-size: 0.74rem;
   }
 
   .chapter-meta p {

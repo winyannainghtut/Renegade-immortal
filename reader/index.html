@@ -53,6 +53,7 @@
             <button class="icon-btn mobile-only" id="openSidebarBtn" type="button">Library</button>
             <button class="icon-btn" id="prevBtn" type="button">Previous</button>
             <button class="icon-btn" id="nextBtn" type="button">Next</button>
+            <button class="icon-btn" id="toggleSettingsBtn" type="button">Settings</button>
           </div>
         </div>
 
@@ -79,14 +80,6 @@
               </select>
             </label>
 
-            <label for="modeSelect">
-              Reading Mode
-              <select id="modeSelect">
-                <option value="scroll">Scroll</option>
-                <option value="paging">Paging</option>
-              </select>
-            </label>
-
             <label for="fontSizeRange">
               Font Size <span id="fontSizeValue"></span>
               <input id="fontSizeRange" type="range" min="14" max="32" step="1">
@@ -104,10 +97,6 @@
           </div>
         </div>
 
-        <div class="toolbar-row chapter-jump-wrap" id="chapterJumpWrap" hidden>
-          <label for="chapterJumpSelect">Jump to section</label>
-          <select id="chapterJumpSelect" aria-label="Jump to section"></select>
-        </div>
       </header>
     </main>
   </div>
