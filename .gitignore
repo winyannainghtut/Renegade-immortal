@@ -1,0 +1,25 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local assistant scratch
+.trash/
+
+# Node / frontend artifacts
+book-reader/node_modules/
+book-reader/dist/
+book-reader/.vite/
+book-reader/.cache/
+
+# Synced runtime content (generated from source episodes during prebuild)
+book-reader/public/eng-episodes/
+book-reader/public/burmese-episodes/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
