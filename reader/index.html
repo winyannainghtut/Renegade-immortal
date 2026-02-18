@@ -30,6 +30,7 @@
 
       <ul class="chapter-list" id="chapterList"></ul>
     </aside>
+    <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Close library"></button>
 
     <main class="reader-panel" id="readerPanel">
       <div class="reader-bg-layer" aria-hidden="true"></div>
@@ -47,17 +48,17 @@
         </section>
       </div>
 
-      <header class="toolbar hud-layer">
+      <header class="toolbar hud-layer" id="toolbar">
         <div class="toolbar-row toolbar-primary">
           <div class="toolbar-group">
             <button class="icon-btn mobile-only" id="openSidebarBtn" type="button">Library</button>
             <button class="icon-btn" id="prevBtn" type="button">Previous</button>
             <button class="icon-btn" id="nextBtn" type="button">Next</button>
-            <button class="icon-btn" id="toggleSettingsBtn" type="button">Settings</button>
+            <button class="icon-btn" id="toggleSettingsBtn" type="button" aria-controls="settingsPanel" aria-expanded="false">Settings</button>
           </div>
         </div>
 
-        <div class="toolbar-row toolbar-secondary">
+        <div class="toolbar-row toolbar-secondary" id="settingsPanel" hidden>
           <div class="toolbar-group settings-grid">
             <label for="themeSelect">
               Theme

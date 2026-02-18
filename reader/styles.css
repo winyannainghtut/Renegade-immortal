@@ -152,6 +152,12 @@ select:focus {
   background: var(--accent-soft);
 }
 
+.filter-chip:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
 .chapter-list {
   list-style: none;
   margin: 0;
@@ -168,14 +174,20 @@ select:focus {
 }
 
 .chapter-item {
+  appearance: none;
   display: grid;
   gap: 3px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
   margin: 0 4px;
   padding: 10px 11px;
   border-radius: 12px;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+  transition: background-color 160ms ease, border-color 160ms ease;
 }
 
 .chapter-item:hover {
@@ -185,6 +197,11 @@ select:focus {
 .chapter-item.active {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+.chapter-item:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .chapter-title {
@@ -238,10 +255,10 @@ select:focus {
   left: 50%;
   width: min(calc(100% - 32px), 1080px);
   z-index: 3;
-  transform: translate(-50%, -8px);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
   background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -249,17 +266,7 @@ select:focus {
   padding: 10px 14px;
   display: grid;
   gap: 10px;
-  transition: opacity 180ms ease, visibility 180ms ease, transform 220ms ease;
-}
-
-.reader-panel:hover .toolbar,
-.reader-panel:focus-within .toolbar,
-.toolbar:hover,
-.toolbar:focus-within {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translate(-50%, 0);
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
 .toolbar-row {
@@ -277,11 +284,11 @@ select:focus {
 }
 
 .toolbar-secondary {
-  display: none;
+  display: flex;
 }
 
-.reader-panel.show-settings .toolbar-secondary {
-  display: flex;
+.toolbar-secondary[hidden] {
+  display: none;
 }
 
 
@@ -323,6 +330,16 @@ select:focus {
   background: color-mix(in srgb, var(--surface-strong) 85%, var(--accent-soft));
 }
 
+.icon-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--surface-strong) 85%, var(--accent-soft));
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+
 .chapter-meta,
 .content {
   width: min(100%, min(var(--reader-width), var(--reader-max-width)));
@@ -351,8 +368,7 @@ select:focus {
   padding: 6px 0 34px;
 }
 
-.content,
-.page-inner {
+.content {
   font-family: var(--reader-font);
   font-size: clamp(1rem, calc(var(--reader-font-size) * 0.98), calc(var(--reader-font-size) * 1.05));
   line-height: var(--reader-line-height);
@@ -450,64 +466,15 @@ select:focus {
   border-radius: 10px;
 }
 
-.reader-panel[data-reading-mode="paging"] .content-stage {
-  overflow: hidden;
-  padding-bottom: 14px;
-}
-
-.reader-panel[data-reading-mode="paging"] .content {
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  gap: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: 0;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  scrollbar-gutter: stable both-edges;
-}
-
-.reader-panel[data-reading-mode="paging"] .content > .page {
-  flex: 0 0 100%;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  overflow: hidden;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-.reader-panel[data-reading-mode="paging"] .content > .page > .page-inner {
-  width: min(calc(100% - 44px), min(var(--reader-width), var(--reader-max-width)));
-  max-width: var(--reader-max-width);
-  height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  padding: 6px 0 30px;
-}
-
-.reader-panel[data-reading-mode="paging"] .content > .page > .page-inner > :first-child {
-  margin-top: 0;
-}
-
-.reader-panel[data-reading-mode="paging"] .content > .page > .page-inner > :last-child {
-  margin-bottom: 0;
-}
-
 .empty-state {
   color: var(--muted);
 }
 
 .mobile-only {
+  display: none;
+}
+
+.sidebar-scrim {
   display: none;
 }
 
@@ -558,6 +525,19 @@ select:focus {
 
   body.sidebar-open .sidebar {
     transform: translateX(0);
+  }
+
+  .sidebar-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: 0;
+    background: rgba(10, 18, 26, 0.45);
+    display: none;
+  }
+
+  body.sidebar-open .sidebar-scrim {
+    display: block;
   }
 
   .reader-panel {
@@ -616,10 +596,6 @@ select:focus {
   .content {
     margin-bottom: 34px;
   }
-
-  .reader-panel[data-reading-mode="paging"] .content > .page > .page-inner {
-    width: min(calc(100% - 26px), var(--reader-max-width));
-  }
 }
 
 @media (max-width: 430px) {
@@ -670,7 +646,7 @@ select:focus {
   .toolbar-primary .toolbar-group {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .icon-btn {
@@ -715,8 +691,7 @@ select:focus {
     line-height: 1.45;
   }
 
-  .content,
-  .page-inner {
+  .content {
     font-size: clamp(1.05rem, 4.5vw, 1.16rem);
     line-height: clamp(1.68, 1.62 + 0.25vw, 1.82);
   }
@@ -747,10 +722,6 @@ select:focus {
   .content blockquote {
     margin: 1.05em 0;
     padding: 0.45em 0.85em;
-  }
-
-  .reader-panel[data-reading-mode="paging"] .content > .page > .page-inner {
-    width: calc(100% - 16px);
   }
 }
 
