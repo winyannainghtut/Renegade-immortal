@@ -157,7 +157,7 @@ export async function getEpisodeIndex(language) {
  * @param {string} language - 'eng' or 'burmese'
  * @returns {number} - First episode number (usually 1)
  */
-export function getFirstEpisode(language) {
+export function getFirstEpisode() {
   return 1;
 }
 
