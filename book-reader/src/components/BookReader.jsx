@@ -147,7 +147,7 @@ const BookReader = ({ language, setLanguage }) => {
         width: pageWidth,
         height: pageHeight,
         showCover: false,
-        mobileScrollSupport: false
+        mobileScrollSupport: true
       };
     }
   };

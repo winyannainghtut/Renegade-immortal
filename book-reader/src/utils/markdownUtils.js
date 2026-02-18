@@ -55,11 +55,11 @@ export function formatEpisodeNumber(num) {
 export function getEpisodePath(language, episodeNum) {
   const folder = getFolderForEpisode(episodeNum);
   if (!folder) return null;
-  
+
   const langFolder = language === 'burmese' ? 'burmese-episodes' : 'eng-episodes';
   const filename = `${formatEpisodeNumber(episodeNum)}.md`;
-  // Use relative path for GitHub Pages subpath deployment compatibility
-  return `./${langFolder}/${folder}/${filename}`;
+  const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/');
+  return `${baseUrl}${langFolder}/${folder}/${filename}`;
 }
 
 /**

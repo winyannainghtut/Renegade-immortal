@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Full frame setup - no scrollbars */
+/* Full frame setup */
 html, body, #root {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* Custom scrollbar hide utility */
