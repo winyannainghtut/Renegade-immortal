@@ -1,11 +1,11 @@
 # Translation Track (Renegade Immortal)
 
-Last updated: 2026-02-17 (UTC)
+Last updated: 2026-02-18 (UTC)
 
 ## Progress
 - Total English episodes available: 2088
-- Burmese translated episodes: 40
-- Remaining: 2048
+- Burmese translated episodes: 50
+- Remaining: 2038
 
 ## Completed (Burmese)
 - 0001-0100/0001.md
@@ -48,8 +48,18 @@ Last updated: 2026-02-17 (UTC)
 - 0001-0100/0038.md
 - 0001-0100/0039.md
 - 0001-0100/0040.md
+- 0001-0100/0041.md
+- 0001-0100/0042.md
+- 0001-0100/0043.md
+- 0001-0100/0044.md
+- 0001-0100/0045.md
+- 0001-0100/0046.md
+- 0001-0100/0047.md
+- 0001-0100/0048.md
+- 0001-0100/0049.md
+- 0001-0100/0050.md
 
 ## Notes
 - Subfolder format mirrors English source structure.
 - Last folder rule for English side remains unchanged (`2001-2088`).
-- Added finalized Burmese episode translations through `0001-0100/0040.md`.
+- Added finalized Burmese episode translations through `0001-0100/0050.md`.
