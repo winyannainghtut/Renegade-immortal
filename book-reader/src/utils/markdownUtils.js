@@ -27,13 +27,122 @@ export const EPISODE_RANGES = [
   { start: 2001, end: 2100, folder: '2001-2088' },
 ];
 
+const DEFAULT_FETCH_TIMEOUT_MS = 15000;
+
+function normalizeBasePath(basePath) {
+  if (!basePath || typeof basePath !== 'string') {
+    return '/';
+  }
+
+  if (basePath === '.' || basePath === './') {
+    return './';
+  }
+
+  return basePath.endsWith('/') ? basePath : `${basePath}/`;
+}
+
+function getRuntimeBasePath() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const pathname = window.location.pathname || '/';
+  if (pathname.endsWith('/')) {
+    return pathname;
+  }
+
+  // `.../index.html` -> `.../`; `/repo` -> `/repo/`.
+  const hasFileExtension = /\.[a-z0-9]+$/i.test(pathname);
+  if (hasFileExtension) {
+    const lastSlashIndex = pathname.lastIndexOf('/');
+    return lastSlashIndex >= 0 ? pathname.slice(0, lastSlashIndex + 1) || '/' : '/';
+  }
+
+  return `${pathname}/`;
+}
+
+function getProjectBasePath() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const [firstSegment] = (window.location.pathname || '')
+    .split('/')
+    .filter(Boolean);
+
+  return firstSegment ? `/${firstSegment}/` : '/';
+}
+
+function getBasePathCandidates() {
+  const envBasePath = normalizeBasePath(import.meta.env.BASE_URL || '/');
+  const runtimeBasePath = normalizeBasePath(getRuntimeBasePath() || '/');
+  const projectBasePath = normalizeBasePath(getProjectBasePath() || '/');
+
+  return [...new Set([envBasePath, runtimeBasePath, projectBasePath, '/'])];
+}
+
 function getBaseUrl() {
-  const baseUrl = import.meta.env.BASE_URL || '/';
-  return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const [basePath] = getBasePathCandidates();
+  return basePath || '/';
+}
+
+function buildPathFromBase(basePath, relativePath) {
+  const normalizedBasePath = normalizeBasePath(basePath);
+  const normalizedPath = String(relativePath || '').replace(/^\/+/, '');
+  return `${normalizedBasePath}${normalizedPath}`;
+}
+
+function createRequestSignal(externalSignal, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS) {
+  const timeout =
+    Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_FETCH_TIMEOUT_MS;
+  const timeoutController = new AbortController();
+  let hasTimedOut = false;
+
+  const timeoutId = setTimeout(() => {
+    hasTimedOut = true;
+    timeoutController.abort();
+  }, timeout);
+
+  const handleExternalAbort = () => {
+    timeoutController.abort();
+  };
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      handleExternalAbort();
+    } else {
+      externalSignal.addEventListener('abort', handleExternalAbort, { once: true });
+    }
+  }
+
+  return {
+    signal: timeoutController.signal,
+    hasTimedOut: () => hasTimedOut,
+    cleanup: () => {
+      clearTimeout(timeoutId);
+      if (externalSignal) {
+        externalSignal.removeEventListener('abort', handleExternalAbort);
+      }
+    },
+  };
+}
+
+export function buildPublicAssetPathCandidates(relativePath) {
+  const normalizedPath = String(relativePath || '').replace(/^\/+/, '');
+  if (!normalizedPath) {
+    return [];
+  }
+
+  return getBasePathCandidates().map((basePath) => buildPathFromBase(basePath, normalizedPath));
 }
 
 export function buildPublicAssetPath(relativePath) {
-  const normalizedPath = relativePath.replace(/^\/+/, '');
+  const [firstCandidate] = buildPublicAssetPathCandidates(relativePath);
+  if (firstCandidate) {
+    return firstCandidate;
+  }
+
+  const normalizedPath = String(relativePath || '').replace(/^\/+/, '');
   return `${getBaseUrl()}${normalizedPath}`;
 }
 
@@ -56,10 +165,7 @@ function getLanguageFolder(language) {
   return language === 'burmese' ? 'burmese-episodes' : 'eng-episodes';
 }
 
-/**
- * Build the URL path for an episode markdown file.
- */
-export function getEpisodePath(language, episodeNum) {
+function getEpisodeRelativePath(language, episodeNum) {
   const folder = getFolderForEpisode(episodeNum);
   if (!folder) {
     return null;
@@ -67,7 +173,66 @@ export function getEpisodePath(language, episodeNum) {
 
   const languageFolder = getLanguageFolder(language);
   const filename = `${formatEpisodeNumber(episodeNum)}.md`;
-  return buildPublicAssetPath(`${languageFolder}/${folder}/${filename}`);
+  return `${languageFolder}/${folder}/${filename}`;
+}
+
+/**
+ * Build the URL path for an episode markdown file.
+ */
+export function getEpisodePath(language, episodeNum) {
+  const relativePath = getEpisodeRelativePath(language, episodeNum);
+  if (!relativePath) {
+    return null;
+  }
+
+  return buildPublicAssetPath(relativePath);
+}
+
+export async function fetchPublicAsset(relativePath, options = {}) {
+  const candidatePaths = buildPublicAssetPathCandidates(relativePath);
+  if (candidatePaths.length === 0) {
+    throw new Error(`Invalid public asset path: ${relativePath}`);
+  }
+
+  let lastResponse = null;
+  let lastError = null;
+  let lastPath = candidatePaths[candidatePaths.length - 1];
+
+  for (const candidatePath of candidatePaths) {
+    const request = createRequestSignal(options.signal, options.timeoutMs);
+
+    try {
+      const response = await fetch(candidatePath, { signal: request.signal });
+      if (response.ok) {
+        return { response, path: candidatePath };
+      }
+
+      lastResponse = response;
+      lastPath = candidatePath;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        if (request.hasTimedOut()) {
+          throw new Error(`Request timed out while loading ${relativePath}.`);
+        }
+        throw error;
+      }
+
+      lastError = error;
+      lastPath = candidatePath;
+    } finally {
+      request.cleanup();
+    }
+  }
+
+  if (lastResponse) {
+    return { response: lastResponse, path: lastPath };
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+
+  throw new Error(`Failed to load ${relativePath}.`);
 }
 
 /**
@@ -75,12 +240,12 @@ export function getEpisodePath(language, episodeNum) {
  * Returns null only for HTTP 404 (missing episode).
  */
 export async function fetchEpisode(language, episodeNum, options = {}) {
-  const episodePath = getEpisodePath(language, episodeNum);
-  if (!episodePath) {
+  const episodeRelativePath = getEpisodeRelativePath(language, episodeNum);
+  if (!episodeRelativePath) {
     return null;
   }
 
-  const response = await fetch(episodePath, { signal: options.signal });
+  const { response, path } = await fetchPublicAsset(episodeRelativePath, options);
   if (response.status === 404) {
     return null;
   }
@@ -93,7 +258,7 @@ export async function fetchEpisode(language, episodeNum, options = {}) {
     content,
     episode: episodeNum,
     language,
-    path: episodePath,
+    path,
   };
 }
 

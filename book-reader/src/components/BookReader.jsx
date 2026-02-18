@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import HTMLFlipBook from 'react-pageflip';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -80,9 +80,9 @@ function getBookDimensions(isMobile, viewport) {
   };
 }
 
-function MarkdownPage({ language, pageNumber, content }) {
+const MarkdownPage = forwardRef(function MarkdownPage({ language, pageNumber, content }, ref) {
   return (
-    <div className="page h-full bg-book-paper px-5 py-5 shadow-inner md:px-8 md:py-7">
+    <div ref={ref} className="page h-full bg-book-paper px-5 py-5 shadow-inner md:px-8 md:py-7">
       <div
         className={`page-content h-full leading-relaxed text-book-text ${
           language === 'burmese' ? 'font-burmese' : 'font-serif'
@@ -97,7 +97,9 @@ function MarkdownPage({ language, pageNumber, content }) {
       </div>
     </div>
   );
-}
+});
+
+MarkdownPage.displayName = 'MarkdownPage';
 
 function SimpleReaderView({ language, pages, pageIndex, onPageChange }) {
   const canGoBack = pageIndex > 0;
@@ -134,6 +136,7 @@ function SimpleReaderView({ language, pages, pageIndex, onPageChange }) {
 }
 
 function BookReader() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { episodeNum } = useParams();
   const [searchParams] = useSearchParams();
@@ -160,13 +163,37 @@ function BookReader() {
   const flipBookRef = useRef(null);
 
   useEffect(() => {
+    let animationFrameId = null;
+
     const updateViewport = () => {
-      setViewport({ width: window.innerWidth, height: window.innerHeight });
+      animationFrameId = null;
+      const nextWidth = window.innerWidth;
+      const nextHeight = window.innerHeight;
+
+      setViewport((previousViewport) => {
+        if (previousViewport.width === nextWidth && previousViewport.height === nextHeight) {
+          return previousViewport;
+        }
+        return { width: nextWidth, height: nextHeight };
+      });
     };
 
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-    return () => window.removeEventListener('resize', updateViewport);
+    const handleResize = () => {
+      if (animationFrameId !== null) {
+        return;
+      }
+      animationFrameId = window.requestAnimationFrame(updateViewport);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    return () => {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -218,6 +245,26 @@ function BookReader() {
   const language = normalizeLanguage(queryLanguage);
   const languageCopy = LANGUAGE_COPY[language];
 
+  const navigateToEpisode = useCallback(
+    (targetEpisode, targetLanguage, options = {}) => {
+      const parsedEpisode = Number.parseInt(String(targetEpisode), 10);
+      if (!Number.isInteger(parsedEpisode) || parsedEpisode <= 0) {
+        return;
+      }
+
+      const normalizedTargetLanguage = normalizeLanguage(targetLanguage);
+      const nextPathname = `/episode/${parsedEpisode}`;
+      const nextSearch = `?lang=${normalizedTargetLanguage}`;
+
+      if (location.pathname === nextPathname && location.search === nextSearch) {
+        return;
+      }
+
+      navigate(`${nextPathname}${nextSearch}`, options);
+    },
+    [location.pathname, location.search, navigate],
+  );
+
   const availableEpisodes = useMemo(
     () => getAvailableEpisodes(indexState.data, language),
     [indexState.data, language],
@@ -238,13 +285,13 @@ function BookReader() {
       requestedEpisode !== resolvedEpisode || queryLanguage !== language;
 
     if (shouldCanonicalize) {
-      navigate(`/episode/${resolvedEpisode}?lang=${language}`, { replace: true });
+      navigateToEpisode(resolvedEpisode, language, { replace: true });
     }
   }, [
     availableEpisodes.length,
     indexState.loading,
     language,
-    navigate,
+    navigateToEpisode,
     queryLanguage,
     requestedEpisode,
     resolvedEpisode,
@@ -292,7 +339,6 @@ function BookReader() {
           content: episode.content,
         });
         setPageIndex(0);
-        setJumpValue(String(resolvedEpisode));
         setFlipFailed(false);
       } catch (error) {
         if (isCancelled || error.name === 'AbortError') {
@@ -324,7 +370,10 @@ function BookReader() {
 
   useEffect(() => {
     if (resolvedEpisode !== null) {
-      setJumpValue(String(resolvedEpisode));
+      const nextJumpValue = String(resolvedEpisode);
+      setJumpValue((currentJumpValue) =>
+        currentJumpValue === nextJumpValue ? currentJumpValue : nextJumpValue,
+      );
     }
   }, [resolvedEpisode]);
 
@@ -351,12 +400,16 @@ function BookReader() {
       return;
     }
     const pageFlipApi = flipBookRef.current?.pageFlip?.();
-    if (!pageFlipApi || typeof pageFlipApi.flip !== 'function') {
+    if (!pageFlipApi || (typeof pageFlipApi.turnToPage !== 'function' && typeof pageFlipApi.flip !== 'function')) {
       return;
     }
 
     try {
-      pageFlipApi.flip(0);
+      if (typeof pageFlipApi.turnToPage === 'function') {
+        pageFlipApi.turnToPage(0);
+      } else {
+        pageFlipApi.flip(0);
+      }
     } catch (error) {
       console.error('Flipbook reset failed, switching to fallback mode:', error);
       setFlipFailed(true);
@@ -378,10 +431,10 @@ function BookReader() {
     (targetEpisode) => {
       const closestEpisode = findNearestEpisode(availableEpisodes, targetEpisode);
       if (closestEpisode !== null) {
-        navigate(`/episode/${closestEpisode}?lang=${language}`);
+        navigateToEpisode(closestEpisode, language);
       }
     },
-    [availableEpisodes, language, navigate],
+    [availableEpisodes, language, navigateToEpisode],
   );
 
   const handleLanguageChange = useCallback(
@@ -400,9 +453,16 @@ function BookReader() {
         return;
       }
 
-      navigate(`/episode/${fallbackEpisode}?lang=${normalizedTargetLanguage}`);
+      navigateToEpisode(fallbackEpisode, normalizedTargetLanguage);
     },
-    [firstAvailableEpisode, indexState.data, language, navigate, requestedEpisode, resolvedEpisode],
+    [
+      firstAvailableEpisode,
+      indexState.data,
+      language,
+      navigateToEpisode,
+      requestedEpisode,
+      resolvedEpisode,
+    ],
   );
 
   const handleJumpSubmit = (event) => {
@@ -418,7 +478,9 @@ function BookReader() {
   const handleFlipEvent = useCallback((event) => {
     const nextPageIndex = Number.parseInt(String(event?.data), 10);
     if (Number.isInteger(nextPageIndex) && nextPageIndex >= 0) {
-      setPageIndex(nextPageIndex);
+      setPageIndex((currentPageIndex) =>
+        currentPageIndex === nextPageIndex ? currentPageIndex : nextPageIndex,
+      );
     }
   }, []);
 
@@ -428,7 +490,9 @@ function BookReader() {
         return;
       }
       const boundedIndex = Math.min(Math.max(nextPageIndex, 0), pages.length - 1);
-      setPageIndex(boundedIndex);
+      setPageIndex((currentPageIndex) =>
+        currentPageIndex === boundedIndex ? currentPageIndex : boundedIndex,
+      );
     },
     [pages.length],
   );
@@ -629,6 +693,7 @@ function BookReader() {
               >
                 <div className="book-container">
                   <HTMLFlipBook
+                    key={`${language}-${resolvedEpisode}-${pages.length}-${isMobile ? 'm' : 'd'}`}
                     ref={flipBookRef}
                     width={dimensions.width}
                     height={dimensions.height}
@@ -639,7 +704,7 @@ function BookReader() {
                     maxHeight={840}
                     maxShadowOpacity={0.45}
                     showCover={dimensions.showCover}
-                    mobileScrollSupport
+                    mobileScrollSupport={false}
                     onFlip={handleFlipEvent}
                     className="shadow-2xl"
                     drawShadow

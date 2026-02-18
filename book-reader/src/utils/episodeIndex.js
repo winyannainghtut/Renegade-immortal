@@ -1,4 +1,4 @@
-import { buildPublicAssetPath } from './markdownUtils';
+import { fetchPublicAsset } from './markdownUtils';
 
 const DEFAULT_MAX_EPISODE = 2088;
 
@@ -65,14 +65,16 @@ function createFallbackIndex() {
 }
 
 export async function fetchEpisodeIndex(options = {}) {
-  const indexPath = buildPublicAssetPath('episode-index.json');
-
   try {
-    const response = await fetch(indexPath, { signal: options.signal });
+    const { response } = await fetchPublicAsset('episode-index.json', options);
     if (!response.ok) {
       throw new Error(`Failed to load episode index (${response.status})`);
     }
-    return await response.json();
+    const indexData = await response.json();
+    if (!indexData || typeof indexData !== 'object' || !indexData.eng || !indexData.burmese) {
+      throw new Error('Episode index format is invalid.');
+    }
+    return indexData;
   } catch (error) {
     if (error.name === 'AbortError') {
       throw error;
