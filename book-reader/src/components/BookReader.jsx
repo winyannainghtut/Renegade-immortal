@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'r
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import HTMLFlipBook from 'react-pageflip';
 import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import FlipBookErrorBoundary from './FlipBookErrorBoundary';
 import {
@@ -19,6 +20,22 @@ import {
 } from '../utils/episodeIndex';
 
 const MOBILE_BREAKPOINT = 768;
+const MARKDOWN_REMARK_PLUGINS = [remarkGfm, remarkBreaks];
+const MARKDOWN_COMPONENTS = {
+  a: ({ children, href, ...props }) => {
+    const isExternalLink = typeof href === 'string' && /^https?:\/\//i.test(href);
+    return (
+      <a
+        href={href}
+        target={isExternalLink ? '_blank' : undefined}
+        rel={isExternalLink ? 'noreferrer noopener' : undefined}
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  },
+};
 
 const LANGUAGE_COPY = {
   eng: {
@@ -81,9 +98,18 @@ function getBookDimensions(isMobile, viewport) {
 }
 
 const MarkdownPage = forwardRef(function MarkdownPage({ language, pageNumber, content }, ref) {
+  const pageContentRef = useRef(null);
+
+  useEffect(() => {
+    if (pageContentRef.current) {
+      pageContentRef.current.scrollTop = 0;
+    }
+  }, [content]);
+
   return (
     <div ref={ref} className="page h-full bg-book-paper px-5 py-5 shadow-inner md:px-8 md:py-7">
       <div
+        ref={pageContentRef}
         className={`page-content h-full leading-relaxed text-book-text ${
           language === 'burmese' ? 'font-burmese' : 'font-serif'
         }`}
@@ -92,7 +118,9 @@ const MarkdownPage = forwardRef(function MarkdownPage({ language, pageNumber, co
           {language === 'burmese' ? `စာမျက်နှာ ${pageNumber}` : `Page ${pageNumber}`}
         </p>
         <div className="reader-markdown">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
+            {content}
+          </ReactMarkdown>
         </div>
       </div>
     </div>
@@ -108,7 +136,12 @@ function SimpleReaderView({ language, pages, pageIndex, onPageChange }) {
   return (
     <div className="w-full max-w-4xl">
       <div className="h-[70vh] min-h-[340px] max-h-[760px] overflow-hidden rounded-lg shadow-2xl">
-        <MarkdownPage language={language} pageNumber={pageIndex + 1} content={pages[pageIndex]} />
+        <MarkdownPage
+          key={`${language}-${pageIndex}`}
+          language={language}
+          pageNumber={pageIndex + 1}
+          content={pages[pageIndex]}
+        />
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
         <button

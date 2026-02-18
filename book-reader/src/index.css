@@ -34,6 +34,9 @@ html, body, #root {
 .page-content {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: #8b4513 #f5f1e6;
 }
@@ -52,6 +55,10 @@ html, body, #root {
 }
 
 /* Markdown typography inside pages */
+.reader-markdown {
+  overflow-wrap: anywhere;
+}
+
 .reader-markdown h1,
 .reader-markdown h2,
 .reader-markdown h3 {
@@ -67,6 +74,14 @@ html, body, #root {
 .reader-markdown ul,
 .reader-markdown ol {
   margin: 0 0 0.8rem 1.35rem;
+}
+
+.reader-markdown ul {
+  list-style: disc;
+}
+
+.reader-markdown ol {
+  list-style: decimal;
 }
 
 .reader-markdown li {
@@ -92,6 +107,17 @@ html, body, #root {
   overflow-x: auto;
   padding: 0.7rem;
   background: rgba(44, 24, 16, 0.09);
+}
+
+.reader-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.reader-markdown a {
+  color: #7d3f00;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Custom page flip shadow effect */

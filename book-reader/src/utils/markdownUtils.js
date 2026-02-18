@@ -2,6 +2,10 @@
  * Utility functions for fetching and managing markdown files.
  */
 
+import { unified } from 'unified';
+import remarkGfm from 'remark-gfm';
+import remarkParse from 'remark-parse';
+
 // Episode ranges for folder structure.
 export const EPISODE_RANGES = [
   { start: 1, end: 100, folder: '0001-0100' },
@@ -28,6 +32,8 @@ export const EPISODE_RANGES = [
 ];
 
 const DEFAULT_FETCH_TIMEOUT_MS = 15000;
+const DEFAULT_MAX_CHARS_PER_PAGE = 2800;
+const markdownParser = unified().use(remarkParse).use(remarkGfm);
 
 function normalizeBasePath(basePath) {
   if (!basePath || typeof basePath !== 'string') {
@@ -265,61 +271,100 @@ export async function fetchEpisode(language, episodeNum, options = {}) {
 /**
  * Split content into pages for the book reader.
  */
-export function splitIntoPages(content, maxCharsPerPage = 2800) {
-  if (!content || !content.trim()) {
-    return [];
+function splitIntoPagesByMarkdownNodes(content, maxCharsPerPage) {
+  let tree;
+  try {
+    tree = markdownParser.parse(content);
+  } catch (error) {
+    return null;
   }
 
-  if (content.length <= maxCharsPerPage) {
-    return [content.trim()];
+  const nodes = Array.isArray(tree?.children) ? tree.children : [];
+  if (nodes.length === 0) {
+    return [content];
   }
 
-  const blocks = content
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
+  const nodeStarts = [];
+  for (const node of nodes) {
+    const startOffset = node?.position?.start?.offset;
+    const endOffset = node?.position?.end?.offset;
+    if (
+      !Number.isInteger(startOffset) ||
+      !Number.isInteger(endOffset) ||
+      startOffset < 0 ||
+      endOffset < startOffset ||
+      endOffset > content.length
+    ) {
+      return null;
+    }
+    nodeStarts.push(startOffset);
+  }
+
+  const segments = nodeStarts
+    .map((startOffset, index) => {
+      const segmentStart = index === 0 ? 0 : startOffset;
+      const segmentEnd = index < nodeStarts.length - 1 ? nodeStarts[index + 1] : content.length;
+      if (segmentEnd <= segmentStart) {
+        return '';
+      }
+      return content.slice(segmentStart, segmentEnd);
+    })
+    .filter((segment) => segment.length > 0);
+
+  if (segments.length === 0) {
+    return [content];
+  }
 
   const pages = [];
   let currentPage = '';
 
-  const pushCurrentPage = () => {
+  const flushPage = () => {
     if (currentPage.trim()) {
-      pages.push(currentPage.trim());
-      currentPage = '';
+      pages.push(currentPage);
     }
+    currentPage = '';
   };
 
-  for (const block of blocks) {
-    const joined = currentPage ? `${currentPage}\n\n${block}` : block;
-    if (joined.length <= maxCharsPerPage) {
-      currentPage = joined;
+  for (const segment of segments) {
+    if (!currentPage) {
+      currentPage = segment;
       continue;
     }
 
-    pushCurrentPage();
-
-    if (block.length <= maxCharsPerPage) {
-      currentPage = block;
+    if (currentPage.length + segment.length <= maxCharsPerPage) {
+      currentPage += segment;
       continue;
     }
 
-    let remaining = block;
-    while (remaining.length > maxCharsPerPage) {
-      let splitAt = remaining.lastIndexOf('\n', maxCharsPerPage);
-      if (splitAt < Math.floor(maxCharsPerPage * 0.45)) {
-        splitAt = remaining.lastIndexOf(' ', maxCharsPerPage);
-      }
-      if (splitAt < Math.floor(maxCharsPerPage * 0.45)) {
-        splitAt = maxCharsPerPage;
-      }
-      pages.push(remaining.slice(0, splitAt).trim());
-      remaining = remaining.slice(splitAt).trimStart();
-    }
-    currentPage = remaining;
+    flushPage();
+    currentPage = segment;
   }
 
-  pushCurrentPage();
-  return pages.length > 0 ? pages : [content.trim()];
+  flushPage();
+  return pages.length > 0 ? pages : [content];
+}
+
+export function splitIntoPages(content, maxCharsPerPage = DEFAULT_MAX_CHARS_PER_PAGE) {
+  if (!content || !content.trim()) {
+    return [];
+  }
+
+  const resolvedMaxChars =
+    Number.isFinite(maxCharsPerPage) && maxCharsPerPage > 0
+      ? Math.floor(maxCharsPerPage)
+      : DEFAULT_MAX_CHARS_PER_PAGE;
+
+  if (content.length <= resolvedMaxChars) {
+    return [content];
+  }
+
+  const markdownAwarePages = splitIntoPagesByMarkdownNodes(content, resolvedMaxChars);
+  if (markdownAwarePages && markdownAwarePages.length > 0) {
+    return markdownAwarePages;
+  }
+
+  // Preserve full content if parsing fails instead of splitting markdown unsafely.
+  return [content];
 }
 
 /**

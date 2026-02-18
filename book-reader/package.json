@@ -21,7 +21,10 @@
     "react-markdown": "^9.0.1",
     "react-pageflip": "^2.0.3",
     "react-router-dom": "^6.21.1",
-    "remark-gfm": "^4.0.0"
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
