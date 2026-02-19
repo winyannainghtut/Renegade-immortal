@@ -53,9 +53,13 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 1fr;
   gap: 0;
   padding: 0;
+}
+
+.app-shell.sidebar-visible {
+  grid-template-columns: 320px 1fr;
 }
 
 .sidebar,
@@ -72,6 +76,31 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 320px;
+  z-index: 40;
+  transform: translateX(-100%);
+  transition: transform 220ms ease;
+}
+
+.app-shell.sidebar-visible .sidebar {
+  transform: translateX(0);
+}
+
+.sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  border: 0;
+  background: rgba(10, 18, 26, 0.45);
+  display: none;
+}
+
+.app-shell.sidebar-visible .sidebar-scrim {
+  display: block;
 }
 
 .sidebar-top {
@@ -162,7 +191,10 @@ select:focus {
   list-style: none;
   margin: 0;
   padding: 10px 8px 12px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .chapter-group {
@@ -538,11 +570,7 @@ select:focus {
 }
 
 .mobile-only {
-  display: none;
-}
-
-.sidebar-scrim {
-  display: none;
+  display: inline-flex;
 }
 
 
@@ -568,7 +596,8 @@ select:focus {
     overflow: hidden;
   }
 
-  .app-shell {
+  .app-shell,
+  .app-shell.sidebar-visible {
     grid-template-columns: 1fr;
     width: 100%;
     min-height: 100dvh;
@@ -578,34 +607,6 @@ select:focus {
 
   .mobile-only {
     display: inline-flex;
-  }
-
-  .sidebar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 40;
-    transform: translateX(-108%);
-    transition: transform 180ms ease;
-  }
-
-  body.sidebar-open .sidebar {
-    transform: translateX(0);
-  }
-
-  .sidebar-scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 30;
-    border: 0;
-    background: rgba(10, 18, 26, 0.45);
-    display: none;
-  }
-
-  body.sidebar-open .sidebar-scrim {
-    display: block;
   }
 
   .reader-panel {
@@ -798,8 +799,8 @@ select:focus {
   }
 
   .content {
-    font-size: clamp(1.05rem, 4.5vw, 1.16rem);
-    line-height: clamp(1.68, 1.62 + 0.25vw, 1.82);
+    font-size: clamp(0.95rem, calc(var(--reader-font-size) * 0.9), 1.25rem);
+    line-height: var(--reader-line-height);
   }
 
   .content h1,
@@ -834,19 +835,31 @@ select:focus {
 @media (pointer: coarse) {
   .settings-grid input[type="range"] {
     accent-color: var(--accent);
+    min-height: 44px;
+    touch-action: pan-y;
   }
 
   .settings-grid input[type="range"]::-webkit-slider-thumb {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
+    touch-action: pan-y;
   }
 
   .settings-grid input[type="range"]::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     border: 0;
+    touch-action: pan-y;
+  }
+
+  .font-size-stepper {
+    touch-action: pan-y;
+  }
+
+  .font-size-stepper .stepper-btn {
+    touch-action: manipulation;
   }
 }
 

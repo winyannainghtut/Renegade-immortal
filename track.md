@@ -1,11 +1,11 @@
 # Translation Track (Renegade Immortal)
 
-Last updated: 2026-02-18 (UTC)
+Last updated: 2026-02-19 (UTC)
 
 ## Progress
 - Total English episodes available: 2088
-- Burmese translated episodes: 60
-- Remaining: 2028
+- Burmese translated episodes: 100
+- Remaining: 1988
 
 ## Completed (Burmese)
 - 0001-0100/0001.md
@@ -68,8 +68,48 @@ Last updated: 2026-02-18 (UTC)
 - 0001-0100/0058.md
 - 0001-0100/0059.md
 - 0001-0100/0060.md
+- 0001-0100/0061.md
+- 0001-0100/0062.md
+- 0001-0100/0063.md
+- 0001-0100/0064.md
+- 0001-0100/0065.md
+- 0001-0100/0066.md
+- 0001-0100/0067.md
+- 0001-0100/0068.md
+- 0001-0100/0069.md
+- 0001-0100/0070.md
+- 0001-0100/0071.md
+- 0001-0100/0072.md
+- 0001-0100/0073.md
+- 0001-0100/0074.md
+- 0001-0100/0075.md
+- 0001-0100/0076.md
+- 0001-0100/0077.md
+- 0001-0100/0078.md
+- 0001-0100/0079.md
+- 0001-0100/0080.md
+- 0001-0100/0081.md
+- 0001-0100/0082.md
+- 0001-0100/0083.md
+- 0001-0100/0084.md
+- 0001-0100/0085.md
+- 0001-0100/0086.md
+- 0001-0100/0087.md
+- 0001-0100/0088.md
+- 0001-0100/0089.md
+- 0001-0100/0090.md
+- 0001-0100/0091.md
+- 0001-0100/0092.md
+- 0001-0100/0093.md
+- 0001-0100/0094.md
+- 0001-0100/0095.md
+- 0001-0100/0096.md
+- 0001-0100/0097.md
+- 0001-0100/0098.md
+- 0001-0100/0099.md
+- 0001-0100/0100.md
 
 ## Notes
 - Subfolder format mirrors English source structure.
 - Last folder rule for English side remains unchanged (`2001-2088`).
-- Added finalized Burmese episode translations through `0001-0100/0060.md`.
+- Added finalized Burmese episode translations through `0001-0100/0100.md`.

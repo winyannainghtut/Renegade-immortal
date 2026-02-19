@@ -122,13 +122,17 @@
     els.fontSizeRange.addEventListener("change", handleFontSizeInput);
 
     if (els.decreaseFontSizeBtn) {
-      els.decreaseFontSizeBtn.addEventListener("click", () => {
+      els.decreaseFontSizeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         setFontSize(Number(state.settings.fontSize) - FONT_SIZE_STEP);
       });
     }
 
     if (els.increaseFontSizeBtn) {
-      els.increaseFontSizeBtn.addEventListener("click", () => {
+      els.increaseFontSizeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         setFontSize(Number(state.settings.fontSize) + FONT_SIZE_STEP);
       });
     }
@@ -226,12 +230,13 @@
   }
 
   function setSidebarOpen(open) {
-    const shouldOpen = Boolean(open && MOBILE_QUERY.matches);
+    const shouldOpen = Boolean(open);
+    els.appShell.classList.toggle("sidebar-visible", shouldOpen);
     document.body.classList.toggle("sidebar-open", shouldOpen);
   }
 
   function isSidebarOpen() {
-    return document.body.classList.contains("sidebar-open");
+    return els.appShell.classList.contains("sidebar-visible");
   }
 
   function setSettingsOpen(open) {
@@ -244,9 +249,8 @@
   }
 
   function syncResponsiveState() {
-    if (!MOBILE_QUERY.matches) {
-      setSidebarOpen(false);
-    }
+    // Sidebar now behaves consistently on all screen sizes
+    // No automatic closing needed when resizing
   }
 
   async function loadManifest() {
