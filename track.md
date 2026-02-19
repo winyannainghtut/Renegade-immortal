@@ -4,8 +4,8 @@ Last updated: 2026-02-19 (UTC)
 
 ## Progress
 - Total English episodes available: 2088
-- Burmese translated episodes: 100
-- Remaining: 1988
+- Burmese translated episodes: 106
+- Remaining: 1982
 
 ## Completed (Burmese)
 - 0001-0100/0001.md
@@ -108,8 +108,15 @@ Last updated: 2026-02-19 (UTC)
 - 0001-0100/0098.md
 - 0001-0100/0099.md
 - 0001-0100/0100.md
+- 0101-0200/0101.md
+- 0101-0200/0102.md
+- 0101-0200/0103.md
+- 0101-0200/0104.md
+- 0101-0200/0126.md
+- 0101-0200/0144.md
 
 ## Notes
 - Subfolder format mirrors English source structure.
 - Last folder rule for English side remains unchanged (`2001-2088`).
-- Added finalized Burmese episode translations through `0001-0100/0100.md`.
+- Added finalized Burmese episode translations through `0101-0200/0144.md`.
+- Partial episodes available: 0101-0104, 0126, 0144.
