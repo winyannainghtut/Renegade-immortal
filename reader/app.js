@@ -17,6 +17,8 @@
   const FONT_SIZE_MIN = 14;
   const FONT_SIZE_MAX = 32;
   const FONT_SIZE_STEP = 1;
+  const SEARCH_INPUT_DEBOUNCE_MS = 120;
+  const SCROLL_VISIBILITY_THRESHOLD = 300;
 
   const defaultSettings = {
     theme: "system",
@@ -39,15 +41,22 @@
   const state = {
     entries: [],
     entriesById: new Map(),
+    entriesBySource: new Map(),
     filteredEntries: [],
+    chapterButtonById: new Map(),
+    activeChapterButtonId: null,
     currentId: null,
     settings: sanitizeSettings(readJSONWithLegacy(SETTINGS_KEY, LEGACY_SETTINGS_KEY, defaultSettings)),
     progress: readProgress(),
     saveTimer: null,
+    searchRenderTimer: null,
     requestSequence: 0,
     activeFetchController: null,
     isLoadingChapter: false,
-    settingsOpen: false
+    settingsOpen: false,
+    scrollButtonRaf: null,
+    pendingScrollTop: 0,
+    scrollToTopVisible: false
   };
 
   const els = {
@@ -86,6 +95,10 @@
   init();
 
   async function init() {
+    if (els.scrollToTopBtn) {
+      state.scrollToTopVisible = !els.scrollToTopBtn.classList.contains("is-hidden");
+    }
+
     bindEvents();
     hydrateSettingsControls();
     applyVisualSettings();
@@ -96,7 +109,7 @@
 
   function bindEvents() {
     els.searchInput.addEventListener("input", () => {
-      renderChapterList();
+      scheduleChapterListRender();
     });
 
     els.chapterList.addEventListener("click", handleChapterListClick);
@@ -271,6 +284,7 @@
       const payload = await response.json();
       state.entries = normalizeEntries(payload.entries);
       state.entriesById = new Map(state.entries.map((entry) => [entry.id, entry]));
+      state.entriesBySource = buildEntriesBySource(state.entries);
 
       normalizeSourceSetting();
       renderSourceFilter();
@@ -315,16 +329,37 @@
         continue;
       }
 
+      const sourceLabel = asNonEmptyString(entry.sourceLabel) || "Library";
+      const group = asNonEmptyString(entry.group);
+      const title = asNonEmptyString(entry.title) || titleFromPath(path);
+
       result.push({
         id,
         path,
-        sourceLabel: asNonEmptyString(entry.sourceLabel) || "Library",
-        group: asNonEmptyString(entry.group),
-        title: asNonEmptyString(entry.title) || titleFromPath(path)
+        sourceLabel,
+        group,
+        title,
+        groupLabel: `${sourceLabel} / ${group || "root"}`,
+        searchText: `${title} ${path} ${group}`.toLowerCase()
       });
     }
 
     return result;
+  }
+
+  function buildEntriesBySource(entries) {
+    const map = new Map();
+
+    for (const entry of entries) {
+      const list = map.get(entry.sourceLabel);
+      if (list) {
+        list.push(entry);
+      } else {
+        map.set(entry.sourceLabel, [entry]);
+      }
+    }
+
+    return map;
   }
 
   function titleFromPath(path) {
@@ -350,16 +385,18 @@
 
   function renderSourceFilter() {
     const sources = [...new Set(state.entries.map((entry) => entry.sourceLabel))];
-    els.sourceFilter.innerHTML = "";
+    const fragment = document.createDocumentFragment();
 
     const allButton = buildFilterChip("All", "all", state.settings.source === "all");
-    els.sourceFilter.appendChild(allButton);
+    fragment.appendChild(allButton);
 
     for (const source of sources) {
       const active = state.settings.source === source;
       const button = buildFilterChip(source, source, active);
-      els.sourceFilter.appendChild(button);
+      fragment.appendChild(button);
     }
+
+    els.sourceFilter.replaceChildren(fragment);
   }
 
   function buildFilterChip(label, value, active) {
@@ -378,31 +415,45 @@
     return button;
   }
 
+  function scheduleChapterListRender() {
+    if (state.searchRenderTimer) {
+      clearTimeout(state.searchRenderTimer);
+    }
+
+    state.searchRenderTimer = window.setTimeout(() => {
+      state.searchRenderTimer = null;
+      renderChapterList();
+    }, SEARCH_INPUT_DEBOUNCE_MS);
+  }
+
   function renderChapterList() {
+    if (state.searchRenderTimer) {
+      clearTimeout(state.searchRenderTimer);
+      state.searchRenderTimer = null;
+    }
+
     const query = els.searchInput.value.trim().toLowerCase();
     const sourceFilter = state.settings.source;
+    const sourceEntries = sourceFilter === "all"
+      ? state.entries
+      : state.entriesBySource.get(sourceFilter) || [];
 
-    const filtered = state.entries.filter((entry) => {
-      if (sourceFilter !== "all" && entry.sourceLabel !== sourceFilter) {
-        return false;
-      }
-
-      if (!query) {
-        return true;
-      }
-
-      const haystack = `${entry.title} ${entry.path} ${entry.group || ""}`.toLowerCase();
-      return haystack.includes(query);
-    });
+    const filtered = query
+      ? sourceEntries.filter((entry) => entry.searchText.includes(query))
+      : sourceEntries;
 
     state.filteredEntries = filtered;
-    els.chapterList.innerHTML = "";
+    const fragment = document.createDocumentFragment();
+    const chapterButtonById = new Map();
+    state.activeChapterButtonId = null;
 
     if (!filtered.length) {
       const empty = document.createElement("li");
       empty.className = "chapter-group";
       empty.textContent = "No chapters match this filter.";
-      els.chapterList.appendChild(empty);
+      fragment.appendChild(empty);
+      els.chapterList.replaceChildren(fragment);
+      state.chapterButtonById = chapterButtonById;
       updateLibraryMeta();
       updateNavButtons();
       return;
@@ -410,22 +461,26 @@
 
     let lastGroupKey = "";
     for (const entry of filtered) {
-      const groupLabel = `${entry.sourceLabel} / ${entry.group || "root"}`;
+      const groupLabel = entry.groupLabel;
 
       if (groupLabel !== lastGroupKey) {
         const groupItem = document.createElement("li");
         groupItem.className = "chapter-group";
         groupItem.textContent = groupLabel;
-        els.chapterList.appendChild(groupItem);
+        fragment.appendChild(groupItem);
         lastGroupKey = groupLabel;
       }
 
       const row = document.createElement("li");
 
       const button = document.createElement("button");
+      const isActive = entry.id === state.currentId;
       button.type = "button";
-      button.className = `chapter-item${entry.id === state.currentId ? " active" : ""}`;
+      button.className = `chapter-item${isActive ? " active" : ""}`;
       button.dataset.chapterId = entry.id;
+      if (isActive) {
+        state.activeChapterButtonId = entry.id;
+      }
 
       const title = document.createElement("div");
       title.className = "chapter-title";
@@ -438,8 +493,12 @@
       button.appendChild(title);
       button.appendChild(path);
       row.appendChild(button);
-      els.chapterList.appendChild(row);
+      fragment.appendChild(row);
+      chapterButtonById.set(entry.id, button);
     }
+
+    state.chapterButtonById = chapterButtonById;
+    els.chapterList.replaceChildren(fragment);
 
     updateLibraryMeta();
     updateNavButtons();
@@ -472,10 +531,29 @@
       return;
     }
 
-    const firstInSource = state.entries.find((entry) => entry.sourceLabel === state.settings.source);
+    const sourceEntries = state.entriesBySource.get(state.settings.source) || [];
+    const firstInSource = sourceEntries[0];
     if (firstInSource) {
       openChapter(firstInSource.id, { closeSidebarOnMobile: false });
     }
+  }
+
+  function setActiveChapterInList(chapterId) {
+    if (state.activeChapterButtonId && state.activeChapterButtonId !== chapterId) {
+      const prevButton = state.chapterButtonById.get(state.activeChapterButtonId);
+      if (prevButton) {
+        prevButton.classList.remove("active");
+      }
+    }
+
+    const nextButton = state.chapterButtonById.get(chapterId);
+    if (!nextButton) {
+      state.activeChapterButtonId = null;
+      return;
+    }
+
+    nextButton.classList.add("active");
+    state.activeChapterButtonId = chapterId;
   }
 
   function handleChapterListClick(event) {
@@ -505,7 +583,7 @@
     state.currentId = chapterId;
     setStorageItem(LAST_CHAPTER_KEY, chapterId);
 
-    renderChapterList();
+    setActiveChapterInList(chapterId);
     scrollActiveChapterIntoView();
     setChapterMeta(entry, "Loading...");
     setChapterLoading(true);
@@ -585,6 +663,7 @@
 
     requestAnimationFrame(() => {
       if (useSavedPosition && state.currentId && restoreChapterProgress(state.currentId)) {
+        scheduleScrollToTopButtonUpdate(els.contentStage.scrollTop);
         return;
       }
 
@@ -593,6 +672,8 @@
         setChapterProgress(state.currentId, 0);
         scheduleProgressSave();
       }
+
+      scheduleScrollToTopButtonUpdate(0);
     });
   }
 
@@ -781,8 +862,8 @@
       return state.entries;
     }
 
-    const bySource = state.entries.filter((entry) => entry.sourceLabel === state.settings.source);
-    return bySource.length ? bySource : state.entries;
+    const bySource = state.entriesBySource.get(state.settings.source);
+    return bySource && bySource.length ? bySource : state.entries;
   }
 
   function updateNavButtons() {
@@ -910,29 +991,41 @@
     }
 
     const activeScrollTop = Math.max(scrollTop, getWindowScrollTop());
-    updateScrollToTopButton(activeScrollTop);
+    scheduleScrollToTopButtonUpdate(activeScrollTop);
   }
 
   function handleWindowScroll() {
     const scrollTop = Math.max(getWindowScrollTop(), els.contentStage.scrollTop);
-    updateScrollToTopButton(scrollTop);
+    scheduleScrollToTopButtonUpdate(scrollTop);
   }
 
   function getWindowScrollTop() {
     return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
   }
 
+  function scheduleScrollToTopButtonUpdate(scrollTop) {
+    state.pendingScrollTop = Math.max(0, Number(scrollTop) || 0);
+
+    if (state.scrollButtonRaf !== null) {
+      return;
+    }
+
+    state.scrollButtonRaf = requestAnimationFrame(() => {
+      state.scrollButtonRaf = null;
+      updateScrollToTopButton(state.pendingScrollTop);
+    });
+  }
+
   function updateScrollToTopButton(scrollTop) {
     if (!els.scrollToTopBtn) return;
 
-    const threshold = 300;
-    const shouldShow = scrollTop > threshold;
-
-    if (shouldShow) {
-      els.scrollToTopBtn.classList.remove("is-hidden");
-    } else {
-      els.scrollToTopBtn.classList.add("is-hidden");
+    const shouldShow = scrollTop > SCROLL_VISIBILITY_THRESHOLD;
+    if (shouldShow === state.scrollToTopVisible) {
+      return;
     }
+
+    state.scrollToTopVisible = shouldShow;
+    els.scrollToTopBtn.classList.toggle("is-hidden", !shouldShow);
   }
 
   function scrollToTop() {
@@ -955,6 +1048,11 @@
       window.scrollTo(0, 0);
     }
 
+    if (state.scrollButtonRaf !== null) {
+      cancelAnimationFrame(state.scrollButtonRaf);
+      state.scrollButtonRaf = null;
+    }
+    state.pendingScrollTop = 0;
     updateScrollToTopButton(0);
   }
 
@@ -988,9 +1086,15 @@
   }
 
   function setChapterProgress(chapterId, position) {
-    const snapshot = getChapterProgress(chapterId);
-    snapshot.scroll = Math.max(0, Number(position) || 0);
-    state.progress[chapterId] = snapshot;
+    const scroll = Math.max(0, Number(position) || 0);
+    const snapshot = state.progress[chapterId];
+
+    if (snapshot && typeof snapshot === "object") {
+      snapshot.scroll = scroll;
+      return;
+    }
+
+    state.progress[chapterId] = { scroll };
   }
 
   function getChapterProgress(chapterId) {
