@@ -56,6 +56,7 @@
     closeSidebarBtn: document.getElementById("closeSidebarBtn"),
     openSidebarBtn: document.getElementById("openSidebarBtn"),
     sidebarScrim: document.getElementById("sidebarScrim"),
+    scrollToTopBtn: document.getElementById("scrollToTopBtn"),
     chapterList: document.getElementById("chapterList"),
     sourceFilter: document.getElementById("sourceFilter"),
     libraryMeta: document.getElementById("libraryMeta"),
@@ -160,6 +161,12 @@
     els.sidebarScrim.addEventListener("click", () => {
       setSidebarOpen(false);
     });
+
+    if (els.scrollToTopBtn) {
+      els.scrollToTopBtn.addEventListener("click", () => {
+        scrollToTop();
+      });
+    }
 
     els.toggleSettingsBtn.addEventListener("click", () => {
       setSettingsOpen(!state.settingsOpen);
@@ -894,10 +901,34 @@
   }
 
   function handleReadProgressScroll() {
-    if (!state.currentId) return;
+    const scrollTop = els.contentStage.scrollTop;
 
-    setChapterProgress(state.currentId, Math.max(0, els.contentStage.scrollTop));
-    scheduleProgressSave();
+    if (state.currentId) {
+      setChapterProgress(state.currentId, Math.max(0, scrollTop));
+      scheduleProgressSave();
+    }
+
+    updateScrollToTopButton(scrollTop);
+  }
+
+  function updateScrollToTopButton(scrollTop) {
+    if (!els.scrollToTopBtn) return;
+
+    const threshold = 300;
+    const shouldShow = scrollTop > threshold;
+
+    if (shouldShow) {
+      els.scrollToTopBtn.hidden = false;
+    } else {
+      els.scrollToTopBtn.hidden = true;
+    }
+  }
+
+  function scrollToTop() {
+    els.contentStage.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   }
 
   function scheduleProgressSave() {
