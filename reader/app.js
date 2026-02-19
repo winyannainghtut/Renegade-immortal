@@ -909,15 +909,17 @@
       scheduleProgressSave();
     }
 
-    // Only update button if window isn't scrolling (desktop mode)
-    if (document.documentElement.scrollTop <= 0) {
-      updateScrollToTopButton(scrollTop);
-    }
+    const activeScrollTop = Math.max(scrollTop, getWindowScrollTop());
+    updateScrollToTopButton(activeScrollTop);
   }
 
   function handleWindowScroll() {
-    const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const scrollTop = Math.max(getWindowScrollTop(), els.contentStage.scrollTop);
     updateScrollToTopButton(scrollTop);
+  }
+
+  function getWindowScrollTop() {
+    return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
   }
 
   function updateScrollToTopButton(scrollTop) {
@@ -934,15 +936,26 @@
   }
 
   function scrollToTop() {
-    // Scroll both the content stage and window to cover desktop and mobile
-    els.contentStage.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
+    // Scroll both possible containers; fallback to instant scroll if smooth options throw.
+    try {
+      els.contentStage.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    } catch (_error) {
+      els.contentStage.scrollTop = 0;
+    }
+
+    try {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    } catch (_error) {
+      window.scrollTo(0, 0);
+    }
+
+    updateScrollToTopButton(0);
   }
 
   function scheduleProgressSave() {
