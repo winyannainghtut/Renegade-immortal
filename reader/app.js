@@ -191,6 +191,7 @@
     }
 
     els.contentStage.addEventListener("scroll", handleReadProgressScroll, { passive: true });
+    window.addEventListener("scroll", handleWindowScroll, { passive: true });
     els.content.addEventListener("click", handleContentLinkClick);
 
     window.addEventListener("beforeunload", () => {
@@ -908,6 +909,14 @@
       scheduleProgressSave();
     }
 
+    // Only update button if window isn't scrolling (desktop mode)
+    if (document.documentElement.scrollTop <= 0) {
+      updateScrollToTopButton(scrollTop);
+    }
+  }
+
+  function handleWindowScroll() {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
     updateScrollToTopButton(scrollTop);
   }
 
@@ -918,14 +927,19 @@
     const shouldShow = scrollTop > threshold;
 
     if (shouldShow) {
-      els.scrollToTopBtn.hidden = false;
+      els.scrollToTopBtn.classList.remove("is-hidden");
     } else {
-      els.scrollToTopBtn.hidden = true;
+      els.scrollToTopBtn.classList.add("is-hidden");
     }
   }
 
   function scrollToTop() {
+    // Scroll both the content stage and window to cover desktop and mobile
     els.contentStage.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+    window.scrollTo({
       top: 0,
       behavior: "smooth"
     });

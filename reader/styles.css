@@ -456,15 +456,16 @@ select:focus {
   justify-content: center;
   box-shadow: var(--shadow);
   transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(10px);
-}
-
-.scroll-to-top:not([hidden]) {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+}
+
+.scroll-to-top.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  pointer-events: none;
 }
 
 .scroll-to-top:hover {
