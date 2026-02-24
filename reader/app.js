@@ -57,6 +57,7 @@
     scrollButtonRaf: null,
     pendingScrollTop: 0,
     scrollToTopVisible: false,
+    chromeVisible: true,
     readProgress: 0,
     pressState: null,
     ignoreNextChapterClickUntil: 0,
@@ -99,6 +100,7 @@
     readerPanel: document.getElementById("readerPanel"),
     ambientGlow: document.getElementById("ambientGlow"),
     readProgressFill: document.getElementById("readProgressFill"),
+    bottomNav: document.getElementById("bottomNav"),
     navLibraryBtn: document.getElementById("navLibraryBtn"),
     navPrevBtn: document.getElementById("navPrevBtn"),
     navNextBtn: document.getElementById("navNextBtn"),
@@ -126,6 +128,7 @@
     hydrateSettingsControls();
     applyVisualSettings();
     setSettingsOpen(false);
+    setChromeVisible(false);
     syncResponsiveState();
     applyProgressBar(0);
     await loadManifest();
@@ -297,6 +300,9 @@
     els.contentStage.addEventListener("scroll", handleReadProgressScroll, { passive: true });
     window.addEventListener("scroll", handleWindowScroll, { passive: true });
     els.content.addEventListener("click", handleContentLinkClick);
+    if (els.readerViewport) {
+      els.readerViewport.addEventListener("click", handleReaderSurfaceTap);
+    }
 
     window.addEventListener("beforeunload", () => {
       persistCurrentProgress();
@@ -358,6 +364,9 @@
     const shouldOpen = Boolean(open);
     els.appShell.classList.toggle("sidebar-visible", shouldOpen);
     document.body.classList.toggle("sidebar-open", shouldOpen);
+    if (shouldOpen) {
+      setChromeVisible(true);
+    }
   }
 
   function isSidebarOpen() {
@@ -366,6 +375,9 @@
 
   function setSettingsOpen(open) {
     state.settingsOpen = Boolean(open);
+    if (state.settingsOpen) {
+      setChromeVisible(true);
+    }
     els.settingsPanel.hidden = !state.settingsOpen;
     els.toggleSettingsBtn.setAttribute("aria-expanded", state.settingsOpen ? "true" : "false");
     const settingsLabel = state.settingsOpen ? "Close settings" : "Open settings";
@@ -376,6 +388,29 @@
       els.controlCenterBtn.setAttribute("aria-label", settingsLabel);
       els.controlCenterBtn.title = settingsLabel;
     }
+  }
+
+  function setChromeVisible(visible) {
+    const nextVisible = Boolean(visible);
+    state.chromeVisible = nextVisible;
+    if (els.appShell) {
+      els.appShell.classList.toggle("reader-chrome-hidden", !nextVisible);
+    }
+    if (!nextVisible && state.settingsOpen) {
+      setSettingsOpen(false);
+    }
+  }
+
+  function handleReaderSurfaceTap(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (isBookDetailOpen()) return;
+    if (target.closest("a, button, input, textarea, select, label, summary, [role='button']")) return;
+
+    const selection = window.getSelection ? String(window.getSelection() || "").trim() : "";
+    if (selection) return;
+
+    setChromeVisible(!state.chromeVisible);
   }
 
   function syncResponsiveState() {
@@ -589,18 +624,9 @@
       button.type = "button";
       button.className = `chapter-item${isActive ? " active" : ""}`;
       button.dataset.chapterId = entry.id;
-      button.style.setProperty("--coverA", entry.palette?.coverA || "#4a91ff");
-      button.style.setProperty("--coverB", entry.palette?.coverB || "#9d61ff");
-      button.style.setProperty("--coverC", entry.palette?.coverC || "#5ad1ff");
       if (isActive) {
         state.activeChapterButtonId = entry.id;
       }
-
-      const visual = document.createElement("span");
-      visual.className = "chapter-visual";
-      visual.style.setProperty("--coverA", entry.palette?.coverA || "#4a91ff");
-      visual.style.setProperty("--coverB", entry.palette?.coverB || "#9d61ff");
-      visual.style.setProperty("--coverC", entry.palette?.coverC || "#5ad1ff");
 
       const title = document.createElement("div");
       title.className = "chapter-title";
@@ -610,7 +636,6 @@
       path.className = "chapter-path";
       path.textContent = entry.path;
 
-      button.appendChild(visual);
       button.appendChild(title);
       button.appendChild(path);
       row.appendChild(button);
