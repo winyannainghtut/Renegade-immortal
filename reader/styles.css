@@ -449,7 +449,8 @@ select:focus {
 .toolbar {
   position: fixed;
   z-index: 130;
-  right: calc(16px + var(--safe-right));
+  left: calc(16px + var(--safe-left));
+  right: auto;
   top: calc(12px + var(--safe-top));
   bottom: auto;
   width: min(420px, calc(100vw - 24px - var(--safe-left) - var(--safe-right)));
@@ -780,7 +781,8 @@ select:focus {
   }
 
   .toolbar {
-    right: calc(12px + var(--safe-right));
+    left: calc(12px + var(--safe-left));
+    right: auto;
     top: calc(12px + var(--safe-top));
     bottom: auto;
     width: min(86vw, 360px);
@@ -844,7 +846,10 @@ select:focus {
   }
 }
 
-.app-shell.sidebar-visible .toolbar,
+.app-shell.sidebar-visible .toolbar {
+  transform: translateX(calc(min(360px, 82vw) + 10px));
+}
+
 .app-shell.sidebar-visible .control-bubble-nav {
   transform: translateX(calc(-1 * min(360px, 82vw) * 0.28));
 }
