@@ -19,6 +19,15 @@
   const FONT_SIZE_STEP = 1;
   const SEARCH_INPUT_DEBOUNCE_MS = 120;
   const SCROLL_VISIBILITY_THRESHOLD = 300;
+  const OFFLINE_SW_URL = "./sw.js";
+  const OFFLINE_SHELL_URLS = [
+    "./",
+    "./index.html",
+    "./styles.css",
+    "./app.js",
+    "./manifest.json",
+    OFFLINE_SW_URL
+  ];
 
   const defaultSettings = {
     theme: "system",
@@ -64,7 +73,14 @@
     detailChapterId: null,
     pageSwipeState: null,
     pullState: null,
-    ambientPulse: 0
+    ambientPulse: 0,
+    offlineSupported: false,
+    offlineCaching: false,
+    offlineReady: false,
+    offlineCachedCount: 0,
+    offlineTotalCount: 0,
+    offlineError: "",
+    swRegistration: null
   };
 
   const els = {
@@ -93,6 +109,8 @@
     lineHeightValue: document.getElementById("lineHeightValue"),
     widthRange: document.getElementById("widthRange"),
     widthValue: document.getElementById("widthValue"),
+    offlineCacheBtn: document.getElementById("offlineCacheBtn"),
+    offlineStatus: document.getElementById("offlineStatus"),
     chapterTitle: document.getElementById("chapterTitle"),
     chapterInfo: document.getElementById("chapterInfo"),
     content: document.getElementById("content"),
@@ -125,6 +143,7 @@
     }
 
     bindEvents();
+    initOfflineMode();
     hydrateSettingsControls();
     applyVisualSettings();
     setSettingsOpen(false);
@@ -219,6 +238,12 @@
       saveSettings();
     });
 
+    if (els.offlineCacheBtn) {
+      els.offlineCacheBtn.addEventListener("click", () => {
+        startOfflineDownload();
+      });
+    }
+
     els.openSidebarBtn.addEventListener("click", () => {
       setSidebarOpen(true);
     });
@@ -307,6 +332,14 @@
     window.addEventListener("beforeunload", () => {
       persistCurrentProgress();
       flushProgressSave();
+    });
+
+    window.addEventListener("online", () => {
+      updateOfflineUI();
+    });
+
+    window.addEventListener("offline", () => {
+      updateOfflineUI();
     });
 
     els.chapterList.addEventListener("pointerdown", handleChapterListPointerStart);
@@ -418,6 +451,179 @@
     // No automatic closing needed when resizing
   }
 
+  function initOfflineMode() {
+    state.offlineSupported = supportsOfflineMode();
+    updateOfflineUI();
+
+    if (!state.offlineSupported) {
+      return;
+    }
+
+    navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+
+    navigator.serviceWorker.register(OFFLINE_SW_URL)
+      .then((registration) => {
+        state.swRegistration = registration;
+        updateOfflineUI();
+      })
+      .catch((error) => {
+        state.offlineError = String(error && error.message ? error.message : error);
+        updateOfflineUI();
+      });
+  }
+
+  function supportsOfflineMode() {
+    if (!("serviceWorker" in navigator)) {
+      return false;
+    }
+
+    if (window.isSecureContext) {
+      return true;
+    }
+
+    const host = window.location.hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  }
+
+  async function startOfflineDownload() {
+    if (!state.offlineSupported || state.offlineCaching) {
+      return;
+    }
+
+    const urls = buildOfflineDownloadList();
+    if (!urls.length) {
+      state.offlineError = "No chapters indexed yet.";
+      updateOfflineUI();
+      return;
+    }
+
+    state.offlineCaching = true;
+    state.offlineReady = false;
+    state.offlineError = "";
+    state.offlineCachedCount = 0;
+    state.offlineTotalCount = urls.length;
+    updateOfflineUI();
+
+    try {
+      await postMessageToServiceWorker({
+        type: "CACHE_URLS",
+        urls
+      });
+    } catch (error) {
+      state.offlineCaching = false;
+      state.offlineError = String(error && error.message ? error.message : error);
+      updateOfflineUI();
+    }
+  }
+
+  function buildOfflineDownloadList() {
+    const urls = new Set(OFFLINE_SHELL_URLS);
+
+    for (const entry of state.entries) {
+      if (!entry || !entry.path) continue;
+      urls.add(toReaderPath(entry.path));
+    }
+
+    return [...urls];
+  }
+
+  async function postMessageToServiceWorker(payload) {
+    if (!state.offlineSupported) {
+      throw new Error("Offline mode is not supported in this browser context.");
+    }
+
+    const registration = state.swRegistration || await navigator.serviceWorker.ready;
+    state.swRegistration = registration;
+    const target = registration.active || registration.waiting || registration.installing;
+
+    if (!target) {
+      throw new Error("Service worker is not ready yet. Reload and try again.");
+    }
+
+    target.postMessage(payload);
+  }
+
+  function handleServiceWorkerMessage(event) {
+    const data = event && event.data && typeof event.data === "object"
+      ? event.data
+      : null;
+
+    if (!data || typeof data.type !== "string") {
+      return;
+    }
+
+    if (data.type === "OFFLINE_PROGRESS") {
+      state.offlineCaching = true;
+      state.offlineReady = false;
+      state.offlineCachedCount = clamp(Number(data.done), 0, Number.MAX_SAFE_INTEGER);
+      state.offlineTotalCount = clamp(Number(data.total), 0, Number.MAX_SAFE_INTEGER);
+      state.offlineError = "";
+      updateOfflineUI();
+      return;
+    }
+
+    if (data.type === "OFFLINE_COMPLETE") {
+      state.offlineCaching = false;
+      state.offlineReady = true;
+      state.offlineCachedCount = clamp(Number(data.cached), 0, Number.MAX_SAFE_INTEGER);
+      state.offlineTotalCount = clamp(Number(data.total), 0, Number.MAX_SAFE_INTEGER);
+      state.offlineError = "";
+      updateOfflineUI();
+      return;
+    }
+
+    if (data.type === "OFFLINE_ERROR") {
+      state.offlineCaching = false;
+      state.offlineReady = false;
+      state.offlineError = asNonEmptyString(data.message) || "Offline caching failed.";
+      updateOfflineUI();
+    }
+  }
+
+  function updateOfflineUI() {
+    if (!els.offlineCacheBtn || !els.offlineStatus) {
+      return;
+    }
+
+    if (!state.offlineSupported) {
+      els.offlineCacheBtn.disabled = true;
+      els.offlineCacheBtn.textContent = "Offline unavailable";
+      els.offlineStatus.textContent = "Needs HTTPS or localhost.";
+      return;
+    }
+
+    if (state.offlineError) {
+      els.offlineCacheBtn.disabled = false;
+      els.offlineCacheBtn.textContent = "Retry offline download";
+      els.offlineStatus.textContent = state.offlineError;
+      return;
+    }
+
+    if (state.offlineCaching) {
+      const done = Math.max(0, Number(state.offlineCachedCount) || 0);
+      const total = Math.max(done, Number(state.offlineTotalCount) || 0);
+      els.offlineCacheBtn.disabled = true;
+      els.offlineCacheBtn.textContent = "Downloading...";
+      els.offlineStatus.textContent = total > 0 ? `Caching ${done}/${total} files` : "Preparing cache...";
+      return;
+    }
+
+    if (state.offlineReady) {
+      els.offlineCacheBtn.disabled = false;
+      els.offlineCacheBtn.textContent = "Refresh offline cache";
+      els.offlineStatus.textContent = navigator.onLine
+        ? "Offline cache ready."
+        : "Offline cache ready (currently offline).";
+      return;
+    }
+
+    els.offlineCacheBtn.disabled = !state.entries.length;
+    els.offlineCacheBtn.textContent = "Download for offline";
+    els.offlineStatus.textContent = state.entries.length
+      ? "Download all indexed chapters to this device."
+      : "Load chapter index first.";
+  }
+
   async function loadManifest() {
     try {
       const response = await fetch("./manifest.json", { cache: "no-store" });
@@ -433,6 +639,7 @@
       normalizeSourceSetting();
       renderSourceFilter();
       renderChapterList();
+      updateOfflineUI();
 
       if (!state.entries.length) {
         els.chapterInfo.textContent = "No markdown files were indexed.";

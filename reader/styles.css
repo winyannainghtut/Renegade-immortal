@@ -511,6 +511,21 @@ select:focus {
   font-size: 0.78rem;
 }
 
+.offline-setting {
+  grid-column: 1 / -1;
+}
+
+.setting-note {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.offline-setting .icon-btn {
+  width: 100%;
+  justify-content: center;
+}
+
 .settings-grid input[type="range"] {
   width: 100%;
 }
