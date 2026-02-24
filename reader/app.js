@@ -67,6 +67,7 @@
     scrollButtonRaf: null,
     pendingScrollTop: 0,
     scrollToTopVisible: false,
+    lastContentScrollTop: 0,
     chromeVisible: true,
     readProgress: 0,
     pressState: null,
@@ -152,6 +153,7 @@
     setChromeVisible(false);
     syncResponsiveState();
     applyProgressBar(0);
+    state.lastContentScrollTop = 0;
     await loadManifest();
   }
 
@@ -451,6 +453,10 @@
   function syncResponsiveState() {
     // Sidebar now behaves consistently on all screen sizes
     // No automatic closing needed when resizing
+    state.lastContentScrollTop = Math.max(0, els.contentStage ? els.contentStage.scrollTop : 0);
+    if (MOBILE_QUERY.matches && !isSidebarOpen() && !state.settingsOpen && !isBookDetailOpen()) {
+      setChromeVisible(true);
+    }
   }
 
   function initOfflineMode() {
@@ -1311,6 +1317,7 @@
       : theme;
 
     document.documentElement.setAttribute("data-theme", resolved);
+    updateReaderSurfaceFromChapter(null);
   }
 
   function normalizeFontSize(value) {
@@ -1401,6 +1408,46 @@
 
     const activeScrollTop = Math.max(scrollTop, getWindowScrollTop());
     scheduleScrollToTopButtonUpdate(activeScrollTop);
+    handleMobileChromeAutoHide(scrollTop);
+  }
+
+  function handleMobileChromeAutoHide(scrollTop) {
+    if (!MOBILE_QUERY.matches) {
+      state.lastContentScrollTop = Math.max(0, Number(scrollTop) || 0);
+      return;
+    }
+
+    const currentTop = Math.max(0, Number(scrollTop) || 0);
+    const previousTop = Math.max(0, Number(state.lastContentScrollTop) || 0);
+    state.lastContentScrollTop = currentTop;
+
+    if (isSidebarOpen() || state.settingsOpen || isBookDetailOpen()) {
+      if (!state.chromeVisible) {
+        setChromeVisible(true);
+      }
+      return;
+    }
+
+    if (currentTop <= 18) {
+      if (!state.chromeVisible) {
+        setChromeVisible(true);
+      }
+      return;
+    }
+
+    const delta = currentTop - previousTop;
+    if (Math.abs(delta) < 7) {
+      return;
+    }
+
+    if (delta > 0 && state.chromeVisible) {
+      setChromeVisible(false);
+      return;
+    }
+
+    if (delta < 0 && !state.chromeVisible) {
+      setChromeVisible(true);
+    }
   }
 
   function handleWindowScroll() {
@@ -1756,22 +1803,37 @@
     }
   }
 
-  function updateReaderSurfaceFromChapter(entry) {
-    const palette = entry ? (entry.palette || generateEntryPalette(entry.title, entry.path, entry.sourceLabel)) : null;
-    if (!palette) return;
-
+  function updateReaderSurfaceFromChapter(_entry) {
     const root = document.documentElement;
-    root.style.setProperty("--accent", palette.accent);
-    root.style.setProperty("--accent-soft", `color-mix(in srgb, ${palette.accent} 24%, transparent)`);
-    root.style.setProperty("--accent-a", palette.accent);
-    root.style.setProperty("--accent-b", palette.secondary);
-    root.style.setProperty("--accent-c", palette.tertiary);
-    root.style.setProperty("--neon", palette.neon);
+    const isDark = root.getAttribute("data-theme") === "dark";
+
+    if (isDark) {
+      root.style.setProperty("--accent", "#c7a06b");
+      root.style.setProperty("--accent-soft", "color-mix(in srgb, #c7a06b 20%, transparent)");
+      root.style.setProperty("--accent-a", "#6f563b");
+      root.style.setProperty("--accent-b", "#a5865f");
+      root.style.setProperty("--accent-c", "#594632");
+      root.style.setProperty("--neon", "#e0bb89");
+    } else {
+      root.style.setProperty("--accent", "#8a6842");
+      root.style.setProperty("--accent-soft", "color-mix(in srgb, #8a6842 20%, transparent)");
+      root.style.setProperty("--accent-a", "#b59670");
+      root.style.setProperty("--accent-b", "#7f6447");
+      root.style.setProperty("--accent-c", "#d4b48e");
+      root.style.setProperty("--neon", "#b99666");
+    }
+
     root.style.setProperty("--reader-bg-top", "1px");
     root.style.setProperty("--reader-bg-bottom", "1px");
+
     if (els.ambientGlow) {
-      els.ambientGlow.style.background = `radial-gradient(700px 700px at 15% 15%, ${palette.accentSoft}, transparent 55%), radial-gradient(500px 500px at 90% 8%, color-mix(in srgb, ${palette.secondary} 30%, transparent), transparent 52%)`;
-      els.ambientGlow.style.opacity = "0.86";
+      if (isDark) {
+        els.ambientGlow.style.background = "radial-gradient(700px 700px at 15% 15%, color-mix(in srgb, #a5865f 14%, transparent), transparent 60%)";
+        els.ambientGlow.style.opacity = "0.46";
+      } else {
+        els.ambientGlow.style.background = "radial-gradient(700px 700px at 15% 15%, color-mix(in srgb, #b59670 12%, transparent), transparent 62%)";
+        els.ambientGlow.style.opacity = "0.54";
+      }
     }
   }
 
@@ -1849,6 +1911,9 @@
     }
     state.pendingScrollTop = 0;
     updateScrollToTopButton(0);
+    if (MOBILE_QUERY.matches && !state.chromeVisible) {
+      setChromeVisible(true);
+    }
   }
 
   function scheduleProgressSave() {
