@@ -56,7 +56,14 @@
     settingsOpen: false,
     scrollButtonRaf: null,
     pendingScrollTop: 0,
-    scrollToTopVisible: false
+    scrollToTopVisible: false,
+    readProgress: 0,
+    pressState: null,
+    ignoreNextChapterClickUntil: 0,
+    detailChapterId: null,
+    pageSwipeState: null,
+    pullState: null,
+    ambientPulse: 0
   };
 
   const els = {
@@ -89,7 +96,23 @@
     chapterInfo: document.getElementById("chapterInfo"),
     content: document.getElementById("content"),
     contentStage: document.getElementById("contentStage"),
-    readerPanel: document.getElementById("readerPanel")
+    readerPanel: document.getElementById("readerPanel"),
+    ambientGlow: document.getElementById("ambientGlow"),
+    readProgressFill: document.getElementById("readProgressFill"),
+    navLibraryBtn: document.getElementById("navLibraryBtn"),
+    navPrevBtn: document.getElementById("navPrevBtn"),
+    navNextBtn: document.getElementById("navNextBtn"),
+    controlCenterBtn: document.getElementById("controlCenterBtn"),
+    searchHintBtn: document.getElementById("searchHintBtn"),
+    readerViewport: document.getElementById("readerViewport"),
+    bookDetailSheet: document.getElementById("bookDetailSheet"),
+    bookDetailTitle: document.getElementById("bookDetailTitle"),
+    bookDetailPath: document.getElementById("bookDetailPath"),
+    bookDetailSource: document.getElementById("bookDetailSource"),
+    bookDetailExcerpt: document.getElementById("bookDetailExcerpt"),
+    openFromDetailBtn: document.getElementById("openFromDetailBtn"),
+    goToNearestBtn: document.getElementById("goToNearestBtn"),
+    closeBookDetailBtn: document.getElementById("closeBookDetailBtn")
   };
 
   init();
@@ -104,6 +127,7 @@
     applyVisualSettings();
     setSettingsOpen(false);
     syncResponsiveState();
+    applyProgressBar(0);
     await loadManifest();
   }
 
@@ -115,6 +139,35 @@
     els.chapterList.addEventListener("click", handleChapterListClick);
     els.prevBtn.addEventListener("click", () => moveToSibling(-1));
     els.nextBtn.addEventListener("click", () => moveToSibling(1));
+    if (els.navLibraryBtn) {
+      els.navLibraryBtn.addEventListener("click", () => {
+        setSidebarOpen(true);
+      });
+    }
+
+    if (els.navPrevBtn) {
+      els.navPrevBtn.addEventListener("click", () => {
+        moveToSibling(-1);
+      });
+    }
+
+    if (els.navNextBtn) {
+      els.navNextBtn.addEventListener("click", () => {
+        moveToSibling(1);
+      });
+    }
+
+    if (els.controlCenterBtn) {
+      els.controlCenterBtn.addEventListener("click", () => {
+        setSettingsOpen(!state.settingsOpen);
+      });
+    }
+
+    if (els.searchHintBtn) {
+      els.searchHintBtn.addEventListener("click", () => {
+        openSearchPanel();
+      });
+    }
 
     els.themeSelect.addEventListener("change", () => {
       state.settings.theme = normalizeTheme(els.themeSelect.value);
@@ -181,6 +234,44 @@
       });
     }
 
+    if (els.openFromDetailBtn) {
+      els.openFromDetailBtn.addEventListener("click", () => {
+        const chapterId = state.detailChapterId;
+        if (!chapterId) {
+          return;
+        }
+
+        closeBookDetailSheet();
+        openChapter(chapterId, { closeSidebarOnMobile: true });
+      });
+    }
+
+    if (els.goToNearestBtn) {
+      els.goToNearestBtn.addEventListener("click", () => {
+        const chapterId = state.detailChapterId;
+        if (!chapterId) {
+          return;
+        }
+
+        closeBookDetailSheet();
+        openChapter(chapterId, { closeSidebarOnMobile: false });
+      });
+    }
+
+    if (els.closeBookDetailBtn) {
+      els.closeBookDetailBtn.addEventListener("click", () => {
+        closeBookDetailSheet();
+      });
+    }
+
+    if (els.bookDetailSheet) {
+      els.bookDetailSheet.addEventListener("click", (event) => {
+        if (event.target === els.bookDetailSheet) {
+          closeBookDetailSheet();
+        }
+      });
+    }
+
     els.toggleSettingsBtn.addEventListener("click", () => {
       setSettingsOpen(!state.settingsOpen);
     });
@@ -212,6 +303,12 @@
       flushProgressSave();
     });
 
+    els.chapterList.addEventListener("pointerdown", handleChapterListPointerStart);
+    els.chapterList.addEventListener("pointermove", handleChapterListPointerMove);
+    els.chapterList.addEventListener("pointerup", handleChapterListPointerEnd);
+    els.chapterList.addEventListener("pointercancel", handleChapterListPointerEnd);
+    els.chapterList.addEventListener("pointerleave", handleChapterListPointerEnd);
+
     addMediaQueryListener(SYSTEM_THEME_QUERY, () => {
       if (state.settings.theme === "system") {
         applyTheme();
@@ -219,17 +316,24 @@
     });
 
     addMediaQueryListener(MOBILE_QUERY, syncResponsiveState);
+    bindReaderGestures();
+    bindRippleOnButtons();
   }
 
   function handleGlobalKeydown(event) {
     if (event.key === "Escape") {
+      if (els.bookDetailSheet && isBookDetailOpen()) {
+        closeBookDetailSheet();
+        return;
+      }
+
       if (isSidebarOpen()) {
         setSidebarOpen(false);
+        return;
       }
       if (state.settingsOpen) {
         setSettingsOpen(false);
       }
-      return;
     }
 
     if (isTypingTarget(event.target)) {
@@ -267,6 +371,11 @@
     const settingsLabel = state.settingsOpen ? "Close settings" : "Open settings";
     els.toggleSettingsBtn.setAttribute("aria-label", settingsLabel);
     els.toggleSettingsBtn.title = settingsLabel;
+    if (els.controlCenterBtn) {
+      els.controlCenterBtn.setAttribute("aria-expanded", state.settingsOpen ? "true" : "false");
+      els.controlCenterBtn.setAttribute("aria-label", settingsLabel);
+      els.controlCenterBtn.title = settingsLabel;
+    }
   }
 
   function syncResponsiveState() {
@@ -332,6 +441,7 @@
       const sourceLabel = asNonEmptyString(entry.sourceLabel) || "Library";
       const group = asNonEmptyString(entry.group);
       const title = asNonEmptyString(entry.title) || titleFromPath(path);
+      const palette = generateEntryPalette(title, path, sourceLabel);
 
       result.push({
         id,
@@ -339,6 +449,7 @@
         sourceLabel,
         group,
         title,
+        palette,
         groupLabel: `${sourceLabel} / ${group || "root"}`,
         searchText: `${title} ${path} ${group}`.toLowerCase()
       });
@@ -478,9 +589,18 @@
       button.type = "button";
       button.className = `chapter-item${isActive ? " active" : ""}`;
       button.dataset.chapterId = entry.id;
+      button.style.setProperty("--coverA", entry.palette?.coverA || "#4a91ff");
+      button.style.setProperty("--coverB", entry.palette?.coverB || "#9d61ff");
+      button.style.setProperty("--coverC", entry.palette?.coverC || "#5ad1ff");
       if (isActive) {
         state.activeChapterButtonId = entry.id;
       }
+
+      const visual = document.createElement("span");
+      visual.className = "chapter-visual";
+      visual.style.setProperty("--coverA", entry.palette?.coverA || "#4a91ff");
+      visual.style.setProperty("--coverB", entry.palette?.coverB || "#9d61ff");
+      visual.style.setProperty("--coverC", entry.palette?.coverC || "#5ad1ff");
 
       const title = document.createElement("div");
       title.className = "chapter-title";
@@ -490,6 +610,7 @@
       path.className = "chapter-path";
       path.textContent = entry.path;
 
+      button.appendChild(visual);
       button.appendChild(title);
       button.appendChild(path);
       row.appendChild(button);
@@ -557,6 +678,12 @@
   }
 
   function handleChapterListClick(event) {
+    if (Date.now() < state.ignoreNextChapterClickUntil) {
+      event.preventDefault();
+      closeBookDetailSheet();
+      return;
+    }
+
     const target = event.target;
     if (!(target instanceof Element)) return;
 
@@ -570,6 +697,10 @@
   }
 
   async function openChapter(chapterId, options = {}) {
+    if (isBookDetailOpen()) {
+      closeBookDetailSheet();
+    }
+
     const entry = state.entriesById.get(chapterId);
     if (!entry) {
       return;
@@ -586,6 +717,8 @@
     setActiveChapterInList(chapterId);
     scrollActiveChapterIntoView();
     setChapterMeta(entry, "Loading...");
+    updateReaderSurfaceFromChapter(entry);
+    animateReaderTransition();
     setChapterLoading(true);
     els.content.innerHTML = '<p class="empty-state">Loading chapter...</p>';
 
@@ -659,11 +792,18 @@
     const useSavedPosition = Boolean(options.useSavedPosition);
     const output = html || '<p class="empty-state">Pick any markdown file to start reading.</p>';
 
+    els.content.classList.remove("reader-transition-enter", "reader-transition-leave");
+    void els.content.offsetWidth;
+    els.content.classList.add("reader-transition-enter");
+
     els.content.innerHTML = output;
 
     requestAnimationFrame(() => {
+      applyProgressGlow(0);
       if (useSavedPosition && state.currentId && restoreChapterProgress(state.currentId)) {
         scheduleScrollToTopButtonUpdate(els.contentStage.scrollTop);
+        updateReadProgress();
+        applyProgressGlow(state.readProgress);
         return;
       }
 
@@ -673,6 +813,7 @@
         scheduleProgressSave();
       }
 
+      updateReadProgress();
       scheduleScrollToTopButtonUpdate(0);
     });
   }
@@ -870,6 +1011,12 @@
     if (!state.currentId || state.isLoadingChapter) {
       els.prevBtn.disabled = true;
       els.nextBtn.disabled = true;
+      if (els.navPrevBtn) {
+        els.navPrevBtn.disabled = true;
+      }
+      if (els.navNextBtn) {
+        els.navNextBtn.disabled = true;
+      }
       return;
     }
 
@@ -878,6 +1025,12 @@
 
     els.prevBtn.disabled = currentIndex <= 0;
     els.nextBtn.disabled = currentIndex < 0 || currentIndex >= navEntries.length - 1;
+    if (els.navPrevBtn) {
+      els.navPrevBtn.disabled = els.prevBtn.disabled;
+    }
+    if (els.navNextBtn) {
+      els.navNextBtn.disabled = els.nextBtn.disabled;
+    }
   }
 
   function hydrateSettingsControls() {
@@ -988,6 +1141,7 @@
     if (state.currentId) {
       setChapterProgress(state.currentId, Math.max(0, scrollTop));
       scheduleProgressSave();
+      updateReadProgress();
     }
 
     const activeScrollTop = Math.max(scrollTop, getWindowScrollTop());
@@ -997,6 +1151,392 @@
   function handleWindowScroll() {
     const scrollTop = Math.max(getWindowScrollTop(), els.contentStage.scrollTop);
     scheduleScrollToTopButtonUpdate(scrollTop);
+  }
+
+  function bindReaderGestures() {
+    bindEdgeSwipeNavigation();
+    bindPullDownSearch();
+  }
+
+  function animateReaderTransition() {
+    if (!els.content) return;
+
+    els.content.classList.remove("reader-transition-enter", "reader-transition-leave");
+    els.content.classList.add("reader-transition-leave");
+    window.setTimeout(() => {
+      if (!els.content) return;
+      els.content.classList.remove("reader-transition-leave");
+      els.content.classList.add("reader-transition-enter");
+      els.content.addEventListener("animationend", () => {
+        els.content.classList.remove("reader-transition-enter");
+      }, { once: true });
+    }, 0);
+  }
+
+  function bindEdgeSwipeNavigation() {
+    const container = els.contentStage || els.readerPanel;
+    if (!container) return;
+    const edgeZone = 30;
+    const swipeThreshold = 62;
+    const verticalThreshold = 30;
+
+    const resetEdgeSwipe = () => {
+      state.pageSwipeState = null;
+    };
+
+    container.addEventListener("pointerdown", (event) => {
+      if (isBookDetailOpen() || event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+      if (event.button === 1) return;
+
+      const x = event.clientX;
+      const y = event.clientY;
+      const nearLeft = x <= edgeZone;
+      const nearRight = x >= window.innerWidth - edgeZone;
+      if (!nearLeft && !nearRight) {
+        return;
+      }
+
+      state.pageSwipeState = {
+        pointerId: event.pointerId,
+        startX: x,
+        startY: y,
+        atLeftEdge: nearLeft,
+        active: true
+      };
+    });
+
+    container.addEventListener("pointermove", (event) => {
+      const stateRef = state.pageSwipeState;
+      if (!stateRef || !stateRef.active || stateRef.pointerId !== event.pointerId) return;
+
+      const dx = event.clientX - stateRef.startX;
+      const dy = event.clientY - stateRef.startY;
+      const movedVertically = Math.abs(dy) > verticalThreshold;
+      const movedAgainstEdge = stateRef.atLeftEdge ? dx < 0 : dx > 0;
+
+      if (movedVertically || movedAgainstEdge) {
+        resetEdgeSwipe();
+      }
+    });
+
+    const finalizeEdgeSwipe = (event) => {
+      const stateRef = state.pageSwipeState;
+      if (!stateRef || stateRef.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const dx = event.clientX - stateRef.startX;
+      if (stateRef.atLeftEdge && dx > swipeThreshold) {
+        moveToSibling(-1);
+      } else if (!stateRef.atLeftEdge && dx < -swipeThreshold) {
+        moveToSibling(1);
+      }
+
+      resetEdgeSwipe();
+    };
+
+    container.addEventListener("pointerup", finalizeEdgeSwipe);
+    container.addEventListener("pointercancel", resetEdgeSwipe);
+    container.addEventListener("pointerleave", (event) => {
+      if (state.pageSwipeState && state.pageSwipeState.pointerId === event.pointerId) {
+        resetEdgeSwipe();
+      }
+    });
+  }
+
+  function bindPullDownSearch() {
+    const surface = els.readerViewport || els.contentStage;
+    if (!surface) return;
+
+    const pullReleaseThreshold = 74;
+    const maxPull = 86;
+    let stateRef = null;
+
+    const clearPullState = () => {
+      if (!stateRef) return;
+      surface.style.transform = "";
+      stateRef = null;
+    };
+
+    surface.addEventListener("touchstart", (event) => {
+      if (isBookDetailOpen()) return;
+      if (els.contentStage.scrollTop > 4) return;
+      if (event.touches.length > 1) return;
+
+      const touch = event.touches[0];
+      stateRef = {
+        pointerId: touch.identifier,
+        startY: touch.clientY,
+        currentY: touch.clientY,
+        active: true,
+        dragged: false
+      };
+    });
+
+    surface.addEventListener("touchmove", (event) => {
+      if (!stateRef || !stateRef.active) return;
+
+      const touch = [...event.touches].find((current) => current.identifier === stateRef.pointerId);
+      if (!touch) return;
+
+      const deltaY = touch.clientY - stateRef.startY;
+      stateRef.currentY = touch.clientY;
+      if (deltaY < 8) {
+        clearPullState();
+        return;
+      }
+
+      stateRef.dragged = true;
+      const clamped = Math.min(deltaY, maxPull);
+      surface.style.transform = `translateY(${clamped}px)`;
+    });
+
+    surface.addEventListener("touchend", (event) => {
+      if (!stateRef || !stateRef.active) return;
+      const pointerId = stateRef.pointerId;
+      const touch = [...event.changedTouches].find((current) => current.identifier === pointerId);
+      if (!touch) return;
+
+      const deltaY = touch.clientY - stateRef.startY;
+      const shouldRevealSearch = stateRef.dragged && deltaY > pullReleaseThreshold;
+      clearPullState();
+      if (shouldRevealSearch) {
+        openSearchPanel();
+      }
+    });
+
+    surface.addEventListener("touchcancel", clearPullState);
+    surface.addEventListener("touchleave", clearPullState);
+  }
+
+  function bindRippleOnButtons() {
+    const trigger = (event) => {
+      if (isBookDetailOpen()) return;
+      const target = event.target instanceof Element
+        ? event.target.closest(".icon-btn, .filter-chip, .chapter-item, .search-wrap")
+        : null;
+      if (!target) return;
+
+      if (event.button !== undefined && event.button > 0) return;
+      if (event.target.closest(".search-wrap")) {
+        // Prevent unnecessary ripples for plain input focus.
+        return;
+      }
+
+      createRipple(target, event);
+    };
+
+    document.addEventListener("pointerdown", trigger);
+  }
+
+  function createRipple(target, event) {
+    if (!target || typeof target.closest !== "function") return;
+
+    const rect = target.getBoundingClientRect();
+    const radiusX = Math.max(0, event.clientX - rect.left);
+    const radiusY = Math.max(0, event.clientY - rect.top);
+    const ripple = document.createElement("span");
+    ripple.className = "ripple-layer";
+    ripple.style.left = `${radiusX}px`;
+    ripple.style.top = `${radiusY}px`;
+    target.style.position = target.style.position || "relative";
+    target.style.overflow = "hidden";
+    target.appendChild(ripple);
+    ripple.addEventListener("animationend", () => {
+      ripple.remove();
+    }, { once: true });
+  }
+
+  function handleChapterListPointerStart(event) {
+    if (event.pointerType && event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    if (event.button > 0) return;
+    if (!event.isPrimary) return;
+
+    const button = event.target instanceof Element
+      ? event.target.closest("button.chapter-item[data-chapter-id]")
+      : null;
+
+    if (!button) return;
+    if (isBookDetailOpen()) return;
+
+    const chapterId = button.dataset.chapterId;
+    if (!chapterId) return;
+
+    state.pressState = {
+      chapterId,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      timer: setTimeout(() => {
+        state.ignoreNextChapterClickUntil = Date.now() + 650;
+        openBookDetailSheet(chapterId);
+      }, 520)
+    };
+
+    const cancelPress = () => {
+      cancelLongPress();
+    };
+
+    button.addEventListener("pointerleave", cancelPress, { once: true });
+  }
+
+  function handleChapterListPointerMove(event) {
+    const pressState = state.pressState;
+    if (!pressState || pressState.pointerId !== event.pointerId) return;
+
+    const deltaX = Math.abs(event.clientX - pressState.startX);
+    const deltaY = Math.abs(event.clientY - pressState.startY);
+
+    if (deltaX > 8 || deltaY > 8) {
+      cancelLongPress();
+    }
+  }
+
+  function handleChapterListPointerEnd(event) {
+    if (!state.pressState || state.pressState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    cancelLongPress();
+  }
+
+  function cancelLongPress() {
+    const pressState = state.pressState;
+    if (!pressState) return;
+
+    if (pressState.timer) {
+      clearTimeout(pressState.timer);
+    }
+    state.pressState = null;
+  }
+
+  function isBookDetailOpen() {
+    return Boolean(els.bookDetailSheet && els.bookDetailSheet.dataset.open === "true");
+  }
+
+  function openBookDetailSheet(chapterId) {
+    const entry = state.entriesById.get(chapterId);
+    if (!entry) {
+      return;
+    }
+    if (!els.bookDetailSheet || !els.bookDetailTitle || !els.bookDetailPath || !els.bookDetailSource) {
+      return;
+    }
+
+    const palette = entry.palette || generateEntryPalette(entry.title, entry.path, entry.sourceLabel);
+    state.detailChapterId = chapterId;
+    els.bookDetailTitle.textContent = entry.title;
+    els.bookDetailPath.textContent = entry.path;
+    els.bookDetailSource.textContent = `${entry.sourceLabel} / ${entry.group || "root"}`;
+    els.bookDetailExcerpt.textContent = makeEntryExcerpt(entry);
+    els.bookDetailSheet.dataset.open = "true";
+    if (els.bookDetailSheet instanceof HTMLElement) {
+      els.bookDetailSheet.setAttribute("data-open", "true");
+    }
+    if (els.bookDetailSheet instanceof HTMLElement) {
+      els.bookDetailSheet.style.display = "grid";
+    }
+    if (els.bookDetailTitle) {
+      els.bookDetailTitle.style.color = palette.accent;
+    }
+    cancelLongPress();
+  }
+
+  function closeBookDetailSheet() {
+    if (!els.bookDetailSheet) return;
+    state.detailChapterId = null;
+    els.bookDetailSheet.dataset.open = "false";
+    els.bookDetailSheet.removeAttribute("data-open");
+  }
+
+  function openSearchPanel() {
+    setSidebarOpen(true);
+    window.requestAnimationFrame(() => {
+      if (els.searchInput) {
+        try {
+          els.searchInput.focus({ preventScroll: true });
+        } catch (_error) {
+          els.searchInput.focus();
+        }
+      }
+    });
+  }
+
+  function makeEntryExcerpt(entry) {
+    const fallback = `Open ${entry.title} to read this chapter.`;
+    const pathSeed = asNonEmptyString(entry.path).replace(/\.md$/i, "").replace(/[_-]+/g, " ");
+    return `${fallback} Source: ${entry.sourceLabel || "Library"}. Location: ${pathSeed}.`;
+  }
+
+  function applyProgressBar(progressPercent) {
+    if (!els.readProgressFill) return;
+    const value = clamp(Number(progressPercent), 0, 100);
+    state.readProgress = value;
+    els.readProgressFill.style.width = `${value}%`;
+    applyProgressGlow(value / 100);
+  }
+
+  function updateReadProgress() {
+    if (!state.currentId) {
+      applyProgressBar(0);
+      return;
+    }
+
+    const maxScrollTop = Math.max(0, els.contentStage.scrollHeight - els.contentStage.clientHeight);
+    if (maxScrollTop === 0) {
+      applyProgressBar(0);
+      return;
+    }
+
+    const percent = (els.contentStage.scrollTop / maxScrollTop) * 100;
+    applyProgressBar(percent);
+  }
+
+  function applyProgressGlow(progress01) {
+    const glowRatio = clamp(Number(progress01), 0, 1);
+    if (els.ambientGlow) {
+      els.ambientGlow.style.opacity = `${0.16 + glowRatio * 0.32}`;
+    }
+  }
+
+  function updateReaderSurfaceFromChapter(entry) {
+    const palette = entry ? (entry.palette || generateEntryPalette(entry.title, entry.path, entry.sourceLabel)) : null;
+    if (!palette) return;
+
+    const root = document.documentElement;
+    root.style.setProperty("--accent", palette.accent);
+    root.style.setProperty("--accent-soft", `color-mix(in srgb, ${palette.accent} 24%, transparent)`);
+    root.style.setProperty("--accent-a", palette.accent);
+    root.style.setProperty("--accent-b", palette.secondary);
+    root.style.setProperty("--accent-c", palette.tertiary);
+    root.style.setProperty("--neon", palette.neon);
+    root.style.setProperty("--reader-bg-top", "1px");
+    root.style.setProperty("--reader-bg-bottom", "1px");
+    if (els.ambientGlow) {
+      els.ambientGlow.style.background = `radial-gradient(700px 700px at 15% 15%, ${palette.accentSoft}, transparent 55%), radial-gradient(500px 500px at 90% 8%, color-mix(in srgb, ${palette.secondary} 30%, transparent), transparent 52%)`;
+      els.ambientGlow.style.opacity = "0.86";
+    }
+  }
+
+  function generateEntryPalette(...entryValues) {
+    const seed = entryValues
+      .filter(Boolean)
+      .join("|")
+      .toLowerCase();
+    const hash = hashString(seed);
+    const hue = mod(hash, 360);
+    const accent = `hsl(${hue} 84% 58%)`;
+    const secondary = `hsl(${mod(hue + 28, 360)} 80% 56%)`;
+    const tertiary = `hsl(${mod(hue + 82, 360)} 78% 60%)`;
+    const neon = `hsl(${mod(hue + 10, 360)} 92% 65%)`;
+    const accentSoft = `color-mix(in srgb, ${accent} 26%, transparent)`;
+    const coverA = `hsl(${mod(hue - 6, 360)} 70% 66%)`;
+    const coverB = `hsl(${mod(hue + 40, 360)} 74% 58%)`;
+    const coverC = `hsl(${mod(hue + 78, 360)} 82% 58%)`;
+
+    return { accent, secondary, tertiary, neon, accentSoft, coverA, coverB, coverC };
   }
 
   function getWindowScrollTop() {
@@ -1202,6 +1742,21 @@
   function clamp(value, min, max) {
     if (!Number.isFinite(value)) return min;
     return Math.min(Math.max(value, min), max);
+  }
+
+  function hashString(value) {
+    const source = String(value || "");
+    let hash = 0;
+    for (let i = 0; i < source.length; i++) {
+      hash = (hash << 5) - hash + source.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
+  }
+
+  function mod(value, divisor) {
+    const normalized = ((value % divisor) + divisor) % divisor;
+    return normalized;
   }
 
   function escapeHtml(value) {
