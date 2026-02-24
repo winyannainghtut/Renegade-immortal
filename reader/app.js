@@ -19,6 +19,7 @@
   const FONT_SIZE_STEP = 1;
   const SEARCH_INPUT_DEBOUNCE_MS = 120;
   const SCROLL_VISIBILITY_THRESHOLD = 300;
+  const OFFLINE_CHAPTER_WINDOW = 100;
   const OFFLINE_SW_URL = "./sw.js";
   const OFFLINE_SHELL_URLS = [
     "./",
@@ -79,6 +80,7 @@
     offlineReady: false,
     offlineCachedCount: 0,
     offlineTotalCount: 0,
+    offlineTargetChapterCount: 0,
     offlineError: "",
     swRegistration: null
   };
@@ -490,8 +492,8 @@
       return;
     }
 
-    const urls = buildOfflineDownloadList();
-    if (!urls.length) {
+    const offlinePayload = buildOfflineDownloadList();
+    if (!offlinePayload.urls.length || offlinePayload.chapterCount <= 0) {
       state.offlineError = "No chapters indexed yet.";
       updateOfflineUI();
       return;
@@ -501,13 +503,14 @@
     state.offlineReady = false;
     state.offlineError = "";
     state.offlineCachedCount = 0;
-    state.offlineTotalCount = urls.length;
+    state.offlineTotalCount = offlinePayload.urls.length;
+    state.offlineTargetChapterCount = offlinePayload.chapterCount;
     updateOfflineUI();
 
     try {
       await postMessageToServiceWorker({
         type: "CACHE_URLS",
-        urls
+        urls: offlinePayload.urls
       });
     } catch (error) {
       state.offlineCaching = false;
@@ -518,13 +521,33 @@
 
   function buildOfflineDownloadList() {
     const urls = new Set(OFFLINE_SHELL_URLS);
+    const targetEntries = getOfflineTargetEntries();
 
-    for (const entry of state.entries) {
+    for (const entry of targetEntries) {
       if (!entry || !entry.path) continue;
       urls.add(toReaderPath(entry.path));
     }
 
-    return [...urls];
+    return {
+      urls: [...urls],
+      chapterCount: targetEntries.length
+    };
+  }
+
+  function getOfflineTargetEntries() {
+    if (!state.entries.length) {
+      return [];
+    }
+
+    let startIndex = 0;
+    if (state.currentId) {
+      const currentIndex = state.entries.findIndex((entry) => entry.id === state.currentId);
+      if (currentIndex >= 0) {
+        startIndex = currentIndex;
+      }
+    }
+
+    return state.entries.slice(startIndex, startIndex + OFFLINE_CHAPTER_WINDOW);
   }
 
   async function postMessageToServiceWorker(payload) {
@@ -612,15 +635,15 @@
       els.offlineCacheBtn.disabled = false;
       els.offlineCacheBtn.textContent = "Refresh offline cache";
       els.offlineStatus.textContent = navigator.onLine
-        ? "Offline cache ready."
-        : "Offline cache ready (currently offline).";
+        ? `Offline cache ready for ${Math.max(0, state.offlineTargetChapterCount)} episodes.`
+        : `Offline cache ready for ${Math.max(0, state.offlineTargetChapterCount)} episodes (currently offline).`;
       return;
     }
 
     els.offlineCacheBtn.disabled = !state.entries.length;
     els.offlineCacheBtn.textContent = "Download for offline";
     els.offlineStatus.textContent = state.entries.length
-      ? "Download all indexed chapters to this device."
+      ? "Download current episode and next 99 episodes to this device."
       : "Load chapter index first.";
   }
 
