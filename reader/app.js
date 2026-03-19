@@ -21,7 +21,6 @@
   const LEGACY_LAST_KEY = "novel_reader_last_chapter_v1";
   const LEGACY_PROGRESS_KEY = "novel_reader_scroll_progress_v1";
 
-  const SYSTEM_THEME_QUERY = window.matchMedia("(prefers-color-scheme: dark)");
   const MOBILE_QUERY = window.matchMedia("(max-width: 979px)");
   const FONT_SIZE_MIN = 14;
   const FONT_SIZE_MAX = 32;
@@ -40,18 +39,10 @@
     OFFLINE_SW_URL,
   ];
 
-  const VALID_THEMES = new Set([
-    "system",
-    "light",
-    "dark",
-    "amoled",
-    "sepia",
-    "burmese-art",
-    "night-blue",
-  ]);
+  const VALID_THEMES = new Set(["light", "dark", "sepia"]);
 
   const defaultSettings = {
-    theme: "system",
+    theme: "light",
     font: "serif",
     fontSize: 19,
     lineHeight: 1.75,
@@ -396,9 +387,6 @@
     });
 
     /* Responsive */
-    addMediaQueryListener(SYSTEM_THEME_QUERY, () => {
-      if (state.settings.theme === "system") applyTheme();
-    });
     addMediaQueryListener(MOBILE_QUERY, syncResponsiveState);
 
     /* Gestures */
@@ -1757,20 +1745,14 @@
   }
 
   function resolveTheme(theme) {
-    if (theme === "system") {
-      return SYSTEM_THEME_QUERY.matches ? "dark" : "light";
-    }
-    return VALID_THEMES.has(theme) ? theme : "light";
+    return VALID_THEMES.has(theme) ? theme : defaultSettings.theme;
   }
 
   function updateThemeColor(resolved) {
     const themeColors = {
       light: "#f4efe4",
-      dark: "#19140f",
-      amoled: "#000000",
+      dark: "#000000",
       sepia: "#f5ead0",
-      "burmese-art": "#1a0a2e",
-      "night-blue": "#0d1b2a",
     };
     const color = themeColors[resolved] || themeColors.light;
     if (els.themeColorMeta) els.themeColorMeta.content = color;
@@ -1784,9 +1766,7 @@
 
   function updateReaderSurface(resolved) {
     const root = document.documentElement;
-    const isDark = ["dark", "amoled", "burmese-art", "night-blue"].includes(
-      resolved,
-    );
+    const isDark = resolved === "dark";
 
     /* Reset to CSS defaults first — only override inline if needed */
     root.style.removeProperty("--accent");

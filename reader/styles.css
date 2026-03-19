@@ -1,6 +1,6 @@
 /* ============================================================
    RENEGADE IMMORTAL READER — Complete Stylesheet
-   Themes: Light (default) · Dark · AMOLED · Sepia · Burmese Art · Night Blue
+   Themes: Light (default), Dark, Sepia
    ============================================================ */
 
 /* ── CSS Custom Properties (Light Theme) ─────────────────── */
@@ -70,61 +70,31 @@
 
 /* ── Dark Theme ───────────────────────────────────────────── */
 html[data-theme="dark"] {
-    --app-bg: #19140f;
-    --app-bg-2: #231b14;
-    --app-bg-3: #120f0b;
-
-    --surface: color-mix(in srgb, #2b221a 90%, transparent);
-    --surface-2: color-mix(in srgb, #33281f 92%, transparent);
-    --surface-border: color-mix(in srgb, #fff 12%, transparent);
-
-    --text: #ecdfcb;
-    --text-muted: #b49e82;
-    --line: color-mix(in srgb, #8c7558 26%, transparent);
-
-    --accent: #c7a06b;
-    --accent-soft: color-mix(in srgb, var(--accent) 20%, transparent);
-    --neon: #e0bb89;
-    --accent-a: #6f563b;
-    --accent-b: #a5865f;
-    --accent-c: #594632;
-
-    --shadow-strong: 0 24px 64px color-mix(in srgb, #000 52%, transparent);
-    --shadow-soft: 0 8px 22px color-mix(in srgb, #000 38%, transparent);
-
-    --status-unread: #475569;
-    --status-in-progress: #d97706;
-    --status-completed: #16a34a;
-}
-
-/* ── AMOLED Theme ─────────────────────────────────────────── */
-html[data-theme="amoled"] {
     --app-bg: #000000;
     --app-bg-2: #050505;
     --app-bg-3: #0a0a0a;
 
-    --surface: color-mix(in srgb, #111 95%, transparent);
+    --surface: color-mix(in srgb, #111111 95%, transparent);
     --surface-2: color-mix(in srgb, #181818 96%, transparent);
-    --surface-border: color-mix(in srgb, #fff 8%, transparent);
+    --surface-border: color-mix(in srgb, #fff 12%, transparent);
 
-    --text: #ffffff;
-    --text-muted: #999999;
-    --line: color-mix(in srgb, #555 30%, transparent);
+    --text: #f2f2f2;
+    --text-muted: #a6a6a6;
+    --line: color-mix(in srgb, #666666 30%, transparent);
 
-    --accent: #e0a060;
+    --accent: #d4a15f;
     --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
-    --neon: #ffc070;
-    --accent-a: #9a6a30;
-    --accent-b: #c08040;
-    --accent-c: #6a4820;
+    --neon: #f0bf79;
+    --accent-a: #7f5a2c;
+    --accent-b: #b27d45;
+    --accent-c: #5e421f;
 
     --shadow-strong: 0 24px 64px color-mix(in srgb, #000 72%, transparent);
     --shadow-soft: 0 8px 22px color-mix(in srgb, #000 58%, transparent);
-    --panel-blur: 6px;
 
     --status-unread: #444444;
-    --status-in-progress: #b45309;
-    --status-completed: #15803d;
+    --status-in-progress: #c36d0a;
+    --status-completed: #1f9449;
 }
 
 /* ── Sepia Theme ──────────────────────────────────────────── */
@@ -154,64 +124,6 @@ html[data-theme="sepia"] {
     --status-unread: #a0856a;
     --status-in-progress: #c47830;
     --status-completed: #5a8a50;
-}
-
-/* ── Burmese Art Theme ────────────────────────────────────── */
-html[data-theme="burmese-art"] {
-    --app-bg: #1a0a2e;
-    --app-bg-2: #220d3c;
-    --app-bg-3: #140824;
-
-    --surface: color-mix(in srgb, #2d1050 90%, transparent);
-    --surface-2: color-mix(in srgb, #3a1568 92%, transparent);
-    --surface-border: color-mix(in srgb, #c090e0 18%, transparent);
-
-    --text: #f0deff;
-    --text-muted: #b08ac8;
-    --line: color-mix(in srgb, #9060c0 30%, transparent);
-
-    --accent: #f0a040;
-    --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
-    --neon: #ffc060;
-    --accent-a: #c070e0;
-    --accent-b: #9040b0;
-    --accent-c: #e090f0;
-
-    --shadow-strong: 0 24px 64px color-mix(in srgb, #0a0018 60%, transparent);
-    --shadow-soft: 0 8px 22px color-mix(in srgb, #0a0018 44%, transparent);
-
-    --status-unread: #6040a0;
-    --status-in-progress: #c48020;
-    --status-completed: #30a070;
-}
-
-/* ── Night Blue Theme ─────────────────────────────────────── */
-html[data-theme="night-blue"] {
-    --app-bg: #0d1b2a;
-    --app-bg-2: #112236;
-    --app-bg-3: #09141f;
-
-    --surface: color-mix(in srgb, #162840 90%, transparent);
-    --surface-2: color-mix(in srgb, #1e3450 92%, transparent);
-    --surface-border: color-mix(in srgb, #5090c0 18%, transparent);
-
-    --text: #d0e8ff;
-    --text-muted: #7a9ec0;
-    --line: color-mix(in srgb, #4080b0 28%, transparent);
-
-    --accent: #4da8da;
-    --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
-    --neon: #70c0f0;
-    --accent-a: #2060a0;
-    --accent-b: #4090c8;
-    --accent-c: #1a4880;
-
-    --shadow-strong: 0 24px 64px color-mix(in srgb, #000820 60%, transparent);
-    --shadow-soft: 0 8px 22px color-mix(in srgb, #000820 44%, transparent);
-
-    --status-unread: #2a4a6a;
-    --status-in-progress: #a06020;
-    --status-completed: #1a7a50;
 }
 
 /* ── Reset & Base ─────────────────────────────────────────── */
