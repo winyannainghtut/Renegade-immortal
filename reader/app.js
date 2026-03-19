@@ -35,6 +35,7 @@
     "./styles.css",
     "./app.js",
     "./manifest.json",
+    "./app-manifest.json",
     OFFLINE_SW_URL,
   ];
 
@@ -221,7 +222,6 @@
     hydrateSettingsControls();
     applyVisualSettings();
     setSettingsOpen(false);
-    setChromeVisible(false);
     syncResponsiveState();
     applyProgressBar(0);
     state.lastContentScrollTop = 0;
@@ -513,12 +513,8 @@
       0,
       els.contentStage ? els.contentStage.scrollTop : 0,
     );
-    if (
-      MOBILE_QUERY.matches &&
-      !isSidebarOpen() &&
-      !state.settingsOpen &&
-      !isBookDetailOpen()
-    ) {
+    /* Always show chrome on first load; mobile auto-hide kicks in only after scrolling */
+    if (!isSidebarOpen() && !state.settingsOpen && !isBookDetailOpen()) {
       setChromeVisible(true);
     }
   }

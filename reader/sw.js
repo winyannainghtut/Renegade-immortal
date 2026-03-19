@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 "use strict";
 
-const SW_VERSION = "reader-offline-v1";
+const SW_VERSION = "reader-offline-v2";
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const CONTENT_CACHE = `${SW_VERSION}-content`;
 
@@ -10,31 +10,37 @@ const CORE_SHELL_URLS = [
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./manifest.json"
+  "./manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(SHELL_CACHE);
-    await cache.addAll(CORE_SHELL_URLS);
-    self.skipWaiting();
-  })());
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(SHELL_CACHE);
+      await cache.addAll(CORE_SHELL_URLS);
+      self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil((async () => {
-    const keep = new Set([SHELL_CACHE, CONTENT_CACHE]);
-    const names = await caches.keys();
+  event.waitUntil(
+    (async () => {
+      const keep = new Set([SHELL_CACHE, CONTENT_CACHE]);
+      const names = await caches.keys();
 
-    await Promise.all(names.map((name) => {
-      if (!keep.has(name)) {
-        return caches.delete(name);
-      }
-      return Promise.resolve(false);
-    }));
+      await Promise.all(
+        names.map((name) => {
+          if (!keep.has(name)) {
+            return caches.delete(name);
+          }
+          return Promise.resolve(false);
+        }),
+      );
 
-    await self.clients.claim();
-  })());
+      await self.clients.claim();
+    })(),
+  );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -55,26 +61,25 @@ self.addEventListener("fetch", (event) => {
 
   const pathname = url.pathname.toLowerCase();
   if (
-    pathname.endsWith(".md")
-    || pathname.endsWith(".json")
-    || pathname.endsWith(".css")
-    || pathname.endsWith(".js")
-    || pathname.endsWith(".html")
-    || pathname.endsWith(".png")
-    || pathname.endsWith(".jpg")
-    || pathname.endsWith(".jpeg")
-    || pathname.endsWith(".gif")
-    || pathname.endsWith(".webp")
-    || pathname.endsWith(".svg")
+    pathname.endsWith(".md") ||
+    pathname.endsWith(".json") ||
+    pathname.endsWith(".css") ||
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".html") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".gif") ||
+    pathname.endsWith(".webp") ||
+    pathname.endsWith(".svg")
   ) {
     event.respondWith(staleWhileRevalidate(request, CONTENT_CACHE));
   }
 });
 
 self.addEventListener("message", (event) => {
-  const payload = event && event.data && typeof event.data === "object"
-    ? event.data
-    : null;
+  const payload =
+    event && event.data && typeof event.data === "object" ? event.data : null;
 
   if (!payload || typeof payload.type !== "string") {
     return;
@@ -137,7 +142,7 @@ async function staleWhileRevalidate(request, cacheName) {
   return new Response("Offline and content not cached yet.", {
     status: 503,
     statusText: "Service Unavailable",
-    headers: { "Content-Type": "text/plain; charset=utf-8" }
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
 }
 
@@ -164,14 +169,14 @@ async function cacheUrls(rawUrls) {
     await broadcast({
       type: "OFFLINE_PROGRESS",
       done,
-      total
+      total,
     });
   }
 
   await broadcast({
     type: "OFFLINE_COMPLETE",
     cached: Math.max(0, done - failed),
-    total
+    total,
   });
 }
 
@@ -205,7 +210,7 @@ function normalizeUrls(rawUrls) {
 async function broadcast(payload) {
   const clients = await self.clients.matchAll({
     type: "window",
-    includeUncontrolled: true
+    includeUncontrolled: true,
   });
 
   for (const client of clients) {

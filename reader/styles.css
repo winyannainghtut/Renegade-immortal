@@ -618,6 +618,8 @@ aside.sidebar {
     isolation: isolate;
     min-height: 100dvh;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .reader-bg-layer {
@@ -668,8 +670,8 @@ aside.sidebar {
 .reader-content-layer {
     position: relative;
     z-index: 1;
-    min-height: 100%;
-    height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     padding: calc(92px + var(--safe-top)) clamp(14px, 3vw, 28px)
@@ -743,6 +745,7 @@ aside.sidebar {
 .content-stage {
     overflow-y: auto;
     overflow-x: hidden;
+    min-height: 0;
     scrollbar-gutter: stable both-edges;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
