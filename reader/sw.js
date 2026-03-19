@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 "use strict";
 
-const SW_VERSION = "reader-offline-v4";
+const SW_VERSION = "reader-offline-v5";
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const CONTENT_CACHE = `${SW_VERSION}-content`;
 
