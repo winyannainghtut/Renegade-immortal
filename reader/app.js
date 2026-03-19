@@ -1703,17 +1703,16 @@
     return VALID_THEMES.has(theme) ? theme : "light";
   }
 
-  const THEME_COLORS = {
-    light: "#f4efe4",
-    dark: "#19140f",
-    amoled: "#000000",
-    sepia: "#f5ead0",
-    "burmese-art": "#1a0a2e",
-    "night-blue": "#0d1b2a",
-  };
-
   function updateThemeColor(resolved) {
-    const color = THEME_COLORS[resolved] || THEME_COLORS.light;
+    const themeColors = {
+      light: "#f4efe4",
+      dark: "#19140f",
+      amoled: "#000000",
+      sepia: "#f5ead0",
+      "burmese-art": "#1a0a2e",
+      "night-blue": "#0d1b2a",
+    };
+    const color = themeColors[resolved] || themeColors.light;
     if (els.themeColorMeta) els.themeColorMeta.content = color;
     try {
       const existing = document.querySelector(
