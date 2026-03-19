@@ -6,6 +6,7 @@ Thumbs.db
 
 # Local assistant scratch
 .trash/
+.agents/
 
 # Node / frontend artifacts
 book-reader/node_modules/

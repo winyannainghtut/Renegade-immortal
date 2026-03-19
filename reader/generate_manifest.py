@@ -13,6 +13,11 @@ SOURCE_ORDER = ["eng-episodes", "burmese-episodes"]
 
 def main() -> None:
   sources = discover_sources()
+  if not sources:
+    raise SystemExit(
+      "No source directories found. Expected eng-episodes/ or burmese-episodes/ at the repo root."
+    )
+
   entries = []
 
   for source_rank, source in enumerate(sources):
@@ -38,6 +43,11 @@ def main() -> None:
           "_pathRank": relative_to_source.as_posix().lower(),
         }
       )
+
+  if not entries:
+    raise SystemExit(
+      "No markdown chapters found in the discovered source directories. Nothing to index."
+    )
 
   entries.sort(key=lambda item: (item["_sourceRank"], item["_episodeRank"], item["_pathRank"]))
 

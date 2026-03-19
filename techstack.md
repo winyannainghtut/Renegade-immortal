@@ -8,7 +8,7 @@
 - Vanilla JavaScript (ES6, `reader/app.js`)
 
 ### Content and Rendering
-- Markdown chapter files (`Eng/**/*.md`, `Burmese/**/*.md`)
+- Markdown chapter files (`eng-episodes/**/*.md`, `burmese-episodes/**/*.md`)
 - `marked` (CDN) to parse Markdown into HTML
 - `DOMPurify` (CDN) to sanitize rendered HTML before display
 
@@ -30,7 +30,7 @@
 
 ### Content Indexing / Tooling
 - Python 3 script (`reader/generate_manifest.py`) to build `reader/manifest.json`
-  - Scans `Eng` and `Burmese`
+  - Scans `eng-episodes` and `burmese-episodes`
   - Extracts episode numbers
   - Sorts chapters and emits metadata
 - PowerShell launcher (`reader/run_reader.ps1`)
@@ -48,7 +48,7 @@
 - Search by title/path/group
 - Source filters:
   - `All`
-  - Per language/source (`Eng`, `Burmese`)
+  - Per language/source (`English`, `Burmese`)
   - `Bookmarks`
   - `Available Offline`
 - Grouped chapter list by `source / folder`
@@ -65,13 +65,9 @@
 
 ### Personalization
 - Theme options:
-  - Auto (system)
   - Light
   - Dark
-  - AMOLED
   - Sepia
-  - Burmese Art
-  - Night Blue
 - Font family selection including Myanmar-friendly options
 - Adjustable typography controls:
   - Font size
@@ -102,7 +98,7 @@
 
 ### Offline Support
 - "Download Next 100 Episodes" from current chapter
-- Batched download strategy (5 concurrent requests per batch)
+- Service worker-driven caching for reader shell assets and requested chapter files
 - Download progress toast with live progress bar
 - Offline availability indicator per chapter
 - Offline-only filter for quick access to downloaded chapters

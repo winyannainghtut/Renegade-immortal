@@ -13,7 +13,7 @@
 
 အသုံးပြုရမယ့် official guide က:
 
-- `/root/RI/instructions.md`
+- `./instructions.md`
 
 အဓိက rule တွေ:
 

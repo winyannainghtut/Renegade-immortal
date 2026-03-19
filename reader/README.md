@@ -1,22 +1,19 @@
 # Novel Reader
 
-Simple local website for reading markdown chapters from:
+Static local website for reading markdown chapters from:
 
-- `Eng`
-- `episodes` (or `Episodes`)
-- `gemini` (or `Gemini`)
+- `eng-episodes/`
+- `burmese-episodes/`
 
 ## Run
 
-From `d:\translate`:
+From the repo root:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\reader\run_reader.ps1
 ```
 
-Then open:
-
-`http://localhost:8000/reader/`
+Then open `http://localhost:8000/reader/`.
 
 ## Refresh index only
 
@@ -24,4 +21,4 @@ Then open:
 python .\reader\generate_manifest.py
 ```
 
-Run this after adding/removing markdown files.
+Run this after adding or removing chapter files.

@@ -46,13 +46,18 @@ jobs:
           site = root / "site"
           site.mkdir(exist_ok=True)
 
-          def copy_dir_case_insensitive(name: str) -> None:
+          copied_content_dirs = []
+
+
+          def copy_dir_case_insensitive(name: str, *, required: bool = False) -> None:
               match = next(
                   (p for p in root.iterdir() if p.is_dir() and p.name.lower() == name.lower()),
                   None,
               )
               if not match:
-                  print(f"Skipping missing directory: {name}")
+                  if required:
+                      raise SystemExit(f"Missing required directory: {name}")
+                  print(f"Skipping optional directory: {name}")
                   return
 
               destination = site / match.name
@@ -60,10 +65,14 @@ jobs:
                   shutil.rmtree(destination)
               shutil.copytree(match, destination)
               print(f"Copied: {match} -> {destination}")
+              if match.name.lower() in {"eng-episodes", "burmese-episodes"}:
+                  copied_content_dirs.append(match.name)
 
-          copy_dir_case_insensitive("reader")
+          copy_dir_case_insensitive("reader", required=True)
           copy_dir_case_insensitive("eng-episodes")
           copy_dir_case_insensitive("burmese-episodes")
+          if not copied_content_dirs:
+              raise SystemExit("No content directories were copied into the Pages artifact.")
 
           # Make the Pages root URL open the reader directly.
           (site / "index.html").write_text(
