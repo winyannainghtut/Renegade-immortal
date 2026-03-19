@@ -532,9 +532,10 @@
       handleServiceWorkerMessage,
     );
     navigator.serviceWorker
-      .register(OFFLINE_SW_URL)
+      .register(OFFLINE_SW_URL, { updateViaCache: "none" })
       .then((reg) => {
         state.swRegistration = reg;
+        reg.update().catch(() => {});
         updateOfflineUI();
       })
       .catch((err) => {
@@ -752,7 +753,15 @@
       if (!res.ok) throw new Error(`Unable to load manifest (${res.status})`);
 
       const payload = await res.json();
-      state.entries = normalizeEntries(payload.entries);
+      const rawEntries = extractManifestEntries(payload);
+      if (!rawEntries) {
+        throw new Error("Chapter index format is invalid. Regenerate manifest.");
+      }
+
+      state.entries = normalizeEntries(rawEntries);
+      if (!state.entries.length && rawEntries.length > 0) {
+        throw new Error("Chapter index entries are invalid. Regenerate manifest.");
+      }
       state.entriesById = new Map(state.entries.map((e) => [e.id, e]));
       state.entriesBySource = buildEntriesBySource(state.entries);
 
@@ -795,18 +804,35 @@
   /* ─────────────────────────────────────────────────────────────
      ENTRY NORMALIZATION
   ───────────────────────────────────────────────────────────── */
+  function extractManifestEntries(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== "object") return null;
+    if (Array.isArray(payload.entries)) return payload.entries;
+    if (Array.isArray(payload.chapters)) return payload.chapters;
+    if (Array.isArray(payload.items)) return payload.items;
+    return null;
+  }
   function normalizeEntries(raw) {
     if (!Array.isArray(raw)) return [];
     const result = [];
     for (const entry of raw) {
       if (!entry || typeof entry !== "object") continue;
-      const id = asNonEmpty(entry.id) || asNonEmpty(entry.path);
-      const path = asNonEmpty(entry.path) || id;
+      const id =
+        asNonEmpty(entry.id) ||
+        asNonEmpty(entry.path) ||
+        asNonEmpty(entry.file);
+      const path =
+        asNonEmpty(entry.path) ||
+        asNonEmpty(entry.file) ||
+        asNonEmpty(entry.url) ||
+        id;
       if (!id || !path) continue;
 
-      const sourceLabel = asNonEmpty(entry.sourceLabel) || "Library";
-      const group = asNonEmpty(entry.group) || "";
-      const title = asNonEmpty(entry.title) || titleFromPath(path);
+      const sourceLabel =
+        asNonEmpty(entry.sourceLabel) || asNonEmpty(entry.source) || "Library";
+      const group = asNonEmpty(entry.group) || asNonEmpty(entry.folder) || "";
+      const title =
+        asNonEmpty(entry.title) || asNonEmpty(entry.name) || titleFromPath(path);
 
       result.push({
         id,
@@ -847,6 +873,16 @@
   function normalizeSourceSetting() {
     const sources = new Set(state.entries.map((e) => e.sourceLabel));
     const s = state.settings.source;
+    if (s === FILTER_BOOKMARK && state.bookmarks.size === 0) {
+      state.settings.source = FILTER_ALL;
+      saveSettings();
+      return;
+    }
+    if (s === FILTER_OFFLINE && state.offlineChapters.size === 0) {
+      state.settings.source = FILTER_ALL;
+      saveSettings();
+      return;
+    }
     if (
       s !== FILTER_ALL &&
       s !== FILTER_BOOKMARK &&

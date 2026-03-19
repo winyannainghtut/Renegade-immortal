@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 "use strict";
 
-const SW_VERSION = "reader-offline-v2";
+const SW_VERSION = "reader-offline-v3";
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const CONTENT_CACHE = `${SW_VERSION}-content`;
 
@@ -11,6 +11,7 @@ const CORE_SHELL_URLS = [
   "./styles.css",
   "./app.js",
   "./manifest.json",
+  "./app-manifest.json",
 ];
 
 self.addEventListener("install", (event) => {
@@ -60,19 +61,18 @@ self.addEventListener("fetch", (event) => {
   }
 
   const pathname = url.pathname.toLowerCase();
-  if (
-    pathname.endsWith(".md") ||
-    pathname.endsWith(".json") ||
-    pathname.endsWith(".css") ||
-    pathname.endsWith(".js") ||
-    pathname.endsWith(".html") ||
-    pathname.endsWith(".png") ||
-    pathname.endsWith(".jpg") ||
-    pathname.endsWith(".jpeg") ||
-    pathname.endsWith(".gif") ||
-    pathname.endsWith(".webp") ||
-    pathname.endsWith(".svg")
-  ) {
+
+  if (isMarkdownPath(pathname)) {
+    event.respondWith(staleWhileRevalidate(request, CONTENT_CACHE));
+    return;
+  }
+
+  if (isReaderShellAssetPath(pathname)) {
+    event.respondWith(networkFirst(request, SHELL_CACHE));
+    return;
+  }
+
+  if (isStaticMediaPath(pathname)) {
     event.respondWith(staleWhileRevalidate(request, CONTENT_CACHE));
   }
 });
@@ -87,8 +87,48 @@ self.addEventListener("message", (event) => {
 
   if (payload.type === "CACHE_URLS" && Array.isArray(payload.urls)) {
     event.waitUntil(cacheUrls(payload.urls));
+    return;
+  }
+
+  if (payload.type === "SKIP_WAITING") {
+    self.skipWaiting();
   }
 });
+
+function isMarkdownPath(pathname) {
+  return pathname.endsWith(".md");
+}
+
+function isReaderShellAssetPath(pathname) {
+  if (pathname.endsWith("/reader") || pathname.endsWith("/reader/")) {
+    return true;
+  }
+
+  const file = pathname.split("/").pop() || "";
+  return (
+    file === "index.html" ||
+    file === "styles.css" ||
+    file === "app.js" ||
+    file === "manifest.json" ||
+    file === "app-manifest.json" ||
+    file === "sw.js"
+  );
+}
+
+function isStaticMediaPath(pathname) {
+  return (
+    pathname.endsWith(".json") ||
+    pathname.endsWith(".css") ||
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".html") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".gif") ||
+    pathname.endsWith(".webp") ||
+    pathname.endsWith(".svg")
+  );
+}
 
 async function networkFirst(request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
@@ -97,7 +137,14 @@ async function networkFirst(request, cacheName, fallbackUrl) {
     const networkResponse = await fetch(request);
     if (networkResponse && networkResponse.ok) {
       cache.put(request, networkResponse.clone());
+      return networkResponse;
     }
+
+    const cached = await cache.match(request);
+    if (cached) {
+      return cached;
+    }
+
     return networkResponse;
   } catch (_error) {
     const cached = await cache.match(request);
