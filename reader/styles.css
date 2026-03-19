@@ -1468,27 +1468,32 @@ select:focus {
         background: rgba(0, 0, 0, 0.52);
     }
 
-    /* Toolbar — compact strip on mobile */
+    /* Top toolbar is hidden on mobile (replaced by bottom nav), only settings panel floats if open */
     .toolbar {
-        left: calc(8px + var(--safe-left));
-        right: calc(8px + var(--safe-right));
-        top: calc(6px + var(--safe-top));
+        left: calc(12px + var(--safe-left));
+        right: calc(12px + var(--safe-right));
+        top: calc(12px + var(--safe-top));
         width: auto;
-        padding: 5px 6px;
-        border-radius: 16px;
-        gap: 4px;
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
     }
 
     .toolbar .toolbar-primary {
-        gap: 3px;
+        display: none;
     }
 
-    .toolbar .icon-btn.icon-only {
-        width: 36px;
-        height: 36px;
-        min-width: 36px;
-        min-height: 36px;
-        border-radius: 10px;
+    .toolbar .toolbar-secondary {
+        background: color-mix(in srgb, var(--surface-2) 90%, transparent);
+        border: 1px solid color-mix(in srgb, var(--surface-border) 60%, transparent);
+        box-shadow: var(--shadow-strong);
+        backdrop-filter: blur(var(--panel-blur));
+        -webkit-backdrop-filter: blur(var(--panel-blur));
+        padding: 18px 14px 14px;
+        border-radius: 20px;
     }
 
     .app-shell.sidebar-visible .toolbar {
@@ -1509,7 +1514,7 @@ select:focus {
     }
 
     .reader-content-layer {
-        padding: calc(62px + var(--safe-top)) 14px calc(88px + var(--safe-bottom)) 14px;
+        padding: calc(24px + var(--safe-top)) 14px calc(88px + var(--safe-bottom)) 14px;
     }
 
     /* Settings grid — stacked on mobile */
