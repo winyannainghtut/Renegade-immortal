@@ -135,8 +135,9 @@ body {
 }
 
 body {
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
     font-family: var(--reader-ui-font);
     color: var(--text);
     background:
@@ -167,11 +168,12 @@ body {
 /* ── App Shell ────────────────────────────────────────────── */
 .app-shell {
     position: relative;
-    min-height: 100dvh;
-    min-height: 100vh;
+    height: 100dvh;
+    height: 100vh;
     display: grid;
     grid-template-columns: 1fr;
     z-index: 1;
+    overflow: hidden;
 }
 
 .app-shell.sidebar-visible {
@@ -524,10 +526,10 @@ aside.sidebar {
 .reader-panel {
     position: relative;
     isolation: isolate;
-    min-height: 100dvh;
-    min-height: 100vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .reader-bg-layer {
