@@ -68,7 +68,7 @@
   - Light
   - Dark
   - Sepia
-- Font family selection including Myanmar-friendly options
+- Fixed reader font: `Padauk`
 - Adjustable typography controls:
   - Font size
   - Line height

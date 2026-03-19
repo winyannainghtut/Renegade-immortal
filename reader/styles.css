@@ -18,7 +18,6 @@
     /* Surfaces */
     --surface: color-mix(in srgb, #fff 84%, #f2eadf);
     --surface-2: color-mix(in srgb, #fff 92%, #f6efe5);
-    --surface-alpha: 0.58;
     --surface-alpha-2: 0.74;
     --surface-border: color-mix(in srgb, #fff 38%, transparent);
 
@@ -42,12 +41,8 @@
     --reader-max-width: 84ch;
 
     /* Font families */
-    --reader-font: "Source Serif 4", "Alegreya", Georgia, serif;
-    --reader-ui-font: "Alegreya", "Source Serif 4", Georgia, serif;
-    --reader-font-myanmar-serif:
-        "Noto Serif Myanmar", "Padauk", "Myanmar Text", "Pyidaungsu", serif;
-    --reader-font-myanmar-sans:
-        "Noto Sans Myanmar", "Padauk", "Myanmar Text", "Pyidaungsu", sans-serif;
+    --reader-font: "Padauk", "Myanmar Text", "Pyidaungsu", sans-serif;
+    --reader-ui-font: "Padauk", "Myanmar Text", "Pyidaungsu", sans-serif;
 
     /* Effects */
     --shadow-strong: 0 20px 56px color-mix(in srgb, #000 18%, transparent);

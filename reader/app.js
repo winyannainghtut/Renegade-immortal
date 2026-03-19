@@ -43,24 +43,10 @@
 
   const defaultSettings = {
     theme: "light",
-    font: "serif",
     fontSize: 19,
     lineHeight: 1.75,
     width: 780,
     source: "all",
-  };
-
-  const fontMap = {
-    serif: "'Source Serif 4', Georgia, serif",
-    friendly: "'Atkinson Hyperlegible', 'Segoe UI', sans-serif",
-    classic: "'Alegreya', Georgia, serif",
-    modern: "'Outfit', 'Segoe UI', sans-serif",
-    myanmarSerif:
-      "'Noto Serif Myanmar', 'Padauk', 'Myanmar Text', 'Pyidaungsu', 'Noto Sans Myanmar', serif",
-    myanmarSans:
-      "'Noto Sans Myanmar', 'Padauk', 'Myanmar Text', 'Pyidaungsu', 'Atkinson Hyperlegible', sans-serif",
-    myanmarPadauk:
-      "'Padauk', 'Noto Sans Myanmar', 'Myanmar Text', 'Pyidaungsu', sans-serif",
   };
 
   /* Source filter special values */
@@ -153,7 +139,6 @@
     settingsPanel: q("settingsPanel"),
     toolbar: q("toolbar"),
     themeSelect: q("themeSelect"),
-    fontSelect: q("fontSelect"),
     decreaseFontSizeBtn: q("decreaseFontSizeBtn"),
     fontSizeRange: q("fontSizeRange"),
     increaseFontSizeBtn: q("increaseFontSizeBtn"),
@@ -281,17 +266,11 @@
       els.settingsPanel.addEventListener("click", (e) => e.stopPropagation());
     }
 
-    /* Theme & font */
+    /* Theme */
     els.themeSelect.addEventListener("change", () => {
       state.settings.theme = normalizeTheme(els.themeSelect.value);
       saveSettings();
       applyTheme();
-    });
-
-    els.fontSelect.addEventListener("change", () => {
-      state.settings.font = normalizeFont(els.fontSelect.value);
-      saveSettings();
-      applyTypography();
     });
 
     /* Font size */
@@ -1722,7 +1701,6 @@
     state.settings = s;
 
     els.themeSelect.value = s.theme;
-    els.fontSelect.value = s.font;
     els.fontSizeRange.value = String(s.fontSize);
     els.lineHeightRange.value = String(s.lineHeight);
     els.widthRange.value = String(s.width);
@@ -1809,7 +1787,6 @@
     const fontSize = normalizeFontSize(state.settings.fontSize);
     const lineHeight = clamp(Number(state.settings.lineHeight), 1.35, 2.2);
     const width = clamp(Number(state.settings.width), 560, 1080);
-    const fontFamily = fontMap[state.settings.font] || fontMap.serif;
 
     state.settings.fontSize = fontSize;
 
@@ -1817,7 +1794,6 @@
     root.style.setProperty("--reader-font-size", `${fontSize}px`);
     root.style.setProperty("--reader-line-height", `${lineHeight}`);
     root.style.setProperty("--reader-width", `${width}px`);
-    root.style.setProperty("--reader-font", fontFamily);
 
     els.fontSizeRange.value = String(fontSize);
     els.fontSizeValue.textContent = `${fontSize}px`;
@@ -1838,17 +1814,10 @@
     return VALID_THEMES.has(value) ? value : defaultSettings.theme;
   }
 
-  function normalizeFont(value) {
-    return Object.prototype.hasOwnProperty.call(fontMap, value)
-      ? value
-      : defaultSettings.font;
-  }
-
   function sanitizeSettings(raw) {
     const src = raw && typeof raw === "object" ? raw : {};
     return {
       theme: normalizeTheme(src.theme),
-      font: normalizeFont(src.font),
       fontSize: normalizeFontSize(src.fontSize),
       lineHeight: clamp(Number(src.lineHeight), 1.35, 2.2),
       width: clamp(Number(src.width), 560, 1080),
