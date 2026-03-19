@@ -14,6 +14,7 @@
   const PROGRESS_KEY = `novel_reader_scroll_progress_${repoScope}_v2`;
   const BOOKMARKS_KEY = `novel_reader_bookmarks_${repoScope}_v2`;
   const OFFLINE_CHAPTERS_KEY = `novel_reader_offline_chapters_${repoScope}_v2`;
+  const SW_RELOAD_KEY = `novel_reader_sw_reload_once_${repoScope}_v1`;
 
   /* Legacy keys for migration */
   const LEGACY_SETTINGS_KEY = "novel_reader_settings_v1";
@@ -527,6 +528,9 @@
     updateOfflineUI();
     if (!state.offlineSupported) return;
 
+    clearOneTimeServiceWorkerReloadFlag();
+    bindServiceWorkerAutoRefresh();
+
     navigator.serviceWorker.addEventListener(
       "message",
       handleServiceWorkerMessage,
@@ -535,7 +539,7 @@
       .register(OFFLINE_SW_URL, { updateViaCache: "none" })
       .then((reg) => {
         state.swRegistration = reg;
-        reg.update().catch(() => {});
+        ensureLatestServiceWorker(reg);
         updateOfflineUI();
       })
       .catch((err) => {
@@ -549,6 +553,58 @@
     if (window.isSecureContext) return true;
     const host = window.location.hostname;
     return host === "localhost" || host === "127.0.0.1";
+  }
+
+  function ensureLatestServiceWorker(reg) {
+    if (!reg) return;
+
+    tryActivateWaitingServiceWorker(reg);
+    reg.update().catch(() => {});
+
+    reg.addEventListener("updatefound", () => {
+      const installing = reg.installing;
+      if (!installing) return;
+      installing.addEventListener("statechange", () => {
+        if (installing.state === "installed") {
+          tryActivateWaitingServiceWorker(reg);
+        }
+      });
+    });
+  }
+
+  function tryActivateWaitingServiceWorker(reg) {
+    const waiting = reg && reg.waiting;
+    if (!waiting) return;
+    waiting.postMessage({ type: "SKIP_WAITING" });
+  }
+
+  function bindServiceWorkerAutoRefresh() {
+    if (!navigator.serviceWorker) return;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hasOneTimeServiceWorkerReloadFlag()) return;
+      setOneTimeServiceWorkerReloadFlag();
+      window.location.reload();
+    });
+  }
+
+  function hasOneTimeServiceWorkerReloadFlag() {
+    try {
+      return sessionStorage.getItem(SW_RELOAD_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function setOneTimeServiceWorkerReloadFlag() {
+    try {
+      sessionStorage.setItem(SW_RELOAD_KEY, "1");
+    } catch (_) {}
+  }
+
+  function clearOneTimeServiceWorkerReloadFlag() {
+    try {
+      sessionStorage.removeItem(SW_RELOAD_KEY);
+    } catch (_) {}
   }
 
   async function startOfflineDownload() {

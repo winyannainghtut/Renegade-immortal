@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 "use strict";
 
-const SW_VERSION = "reader-offline-v3";
+const SW_VERSION = "reader-offline-v4";
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const CONTENT_CACHE = `${SW_VERSION}-content`;
 
@@ -18,7 +18,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(SHELL_CACHE);
-      await cache.addAll(CORE_SHELL_URLS);
+      await cacheCoreShell(cache, CORE_SHELL_URLS);
       self.skipWaiting();
     })(),
   );
@@ -134,7 +134,8 @@ async function networkFirst(request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
 
   try {
-    const networkResponse = await fetch(request);
+    const networkRequest = new Request(request, { cache: "no-store" });
+    const networkResponse = await fetch(networkRequest);
     if (networkResponse && networkResponse.ok) {
       cache.put(request, networkResponse.clone());
       return networkResponse;
@@ -160,6 +161,19 @@ async function networkFirst(request, cacheName, fallbackUrl) {
     }
 
     throw _error;
+  }
+}
+
+async function cacheCoreShell(cache, urls) {
+  const base = self.registration.scope || self.location.href;
+  for (const url of urls) {
+    const absolute = new URL(url, base).href;
+    const req = new Request(absolute, { cache: "reload" });
+    const res = await fetch(req);
+    if (!res || !res.ok) {
+      throw new Error(`Failed to cache shell asset: ${url}`);
+    }
+    await cache.put(req, res.clone());
   }
 }
 
