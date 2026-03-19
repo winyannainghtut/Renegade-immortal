@@ -944,7 +944,11 @@
     btn.setAttribute("aria-pressed", active ? "true" : "false");
 
     if (iconEl) {
-      iconEl.className = "filter-chip-icon";
+      if (typeof iconEl.setAttribute === "function") {
+        iconEl.setAttribute("class", "filter-chip-icon");
+      } else {
+        iconEl.className = "filter-chip-icon";
+      }
       btn.appendChild(iconEl);
     }
 
