@@ -1,0 +1,22 @@
+{
+  "name": "Renegade Immortal Reader",
+  "short_name": "RI Reader",
+  "description": "Offline-capable chapter reader for Renegade Immortal novel",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4efe4",
+  "theme_color": "#8a6842",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "categories": [
+    "books",
+    "entertainment"
+  ],
+  "prefer_related_applications": false
+}
