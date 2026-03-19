@@ -8,15 +8,9 @@ Thumbs.db
 .trash/
 .agents/
 
-# Node / frontend artifacts
-book-reader/node_modules/
-book-reader/dist/
-book-reader/.vite/
-book-reader/.cache/
-
-# Synced runtime content (generated from source episodes during prebuild)
-book-reader/public/eng-episodes/
-book-reader/public/burmese-episodes/
+# Python bytecode
+__pycache__/
+*.pyc
 
 # Logs
 *.log

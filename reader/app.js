@@ -102,7 +102,6 @@
     /* Gestures */
     pressState: null,
     pageSwipeState: null,
-    pullState: null,
     ignoreNextChapterClickUntil: 0,
 
     /* Detail sheet */
@@ -162,7 +161,7 @@
     navPrevBtn: q("navPrevBtn"),
     navNextBtn: q("navNextBtn"),
     navBookmarkBtn: q("navBookmarkBtn"),
-    controlCenterBtn: q("controlCenterBtn"),
+    navSettingsBtn: q("navSettingsBtn"),
     readerViewport: q("readerViewport"),
     bookDetailSheet: q("bookDetailSheet"),
     bookDetailTitle: q("bookDetailTitle"),
@@ -238,9 +237,6 @@
     on(els.navLibraryBtn, "click", () => setSidebarOpen(true));
     on(els.navPrevBtn, "click", () => moveToSibling(-1));
     on(els.navNextBtn, "click", () => moveToSibling(1));
-    on(els.controlCenterBtn, "click", () =>
-      setSettingsOpen(!state.settingsOpen),
-    );
 
     /* Sidebar */
     els.openSidebarBtn.addEventListener("click", () => setSidebarOpen(true));
@@ -251,11 +247,15 @@
     els.toggleSettingsBtn.addEventListener("click", () =>
       setSettingsOpen(!state.settingsOpen),
     );
+    on(els.navSettingsBtn, "click", () =>
+      setSettingsOpen(!state.settingsOpen),
+    );
 
     /* Click outside settings to close */
     document.addEventListener("click", (e) => {
       if (!state.settingsOpen) return;
       if (els.toolbar && els.toolbar.contains(e.target)) return;
+      if (els.bottomNav && els.bottomNav.contains(e.target)) return;
       setSettingsOpen(false);
     });
 
@@ -416,7 +416,6 @@
   function setSidebarOpen(open) {
     const shouldOpen = Boolean(open);
     els.appShell.classList.toggle("sidebar-visible", shouldOpen);
-    document.body.classList.toggle("sidebar-open", shouldOpen);
     if (shouldOpen) setChromeVisible(true);
   }
 
@@ -438,7 +437,11 @@
     const expanded = state.settingsOpen ? "true" : "false";
     const label = state.settingsOpen ? "Close settings" : "Open settings";
     setAriaExpanded(els.toggleSettingsBtn, expanded, label);
-    setAriaExpanded(els.controlCenterBtn, expanded, label);
+
+    /* Sync mobile nav settings button active state */
+    if (els.navSettingsBtn) {
+      els.navSettingsBtn.classList.toggle("nav-active", state.settingsOpen);
+    }
   }
 
   function setAriaExpanded(el, value, label) {
@@ -526,7 +529,7 @@
     if (!reg) return;
 
     tryActivateWaitingServiceWorker(reg);
-    reg.update().catch(() => {});
+    reg.update().catch(() => { });
 
     reg.addEventListener("updatefound", () => {
       const installing = reg.installing;
@@ -565,13 +568,13 @@
   function setOneTimeServiceWorkerReloadFlag() {
     try {
       sessionStorage.setItem(SW_RELOAD_KEY, "1");
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function clearOneTimeServiceWorkerReloadFlag() {
     try {
       sessionStorage.removeItem(SW_RELOAD_KEY);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   async function startOfflineDownload() {
@@ -654,8 +657,8 @@
       const pct =
         state.offlineTotalCount > 0
           ? Math.round(
-              (state.offlineCachedCount / state.offlineTotalCount) * 100,
-            )
+            (state.offlineCachedCount / state.offlineTotalCount) * 100,
+          )
           : 0;
       showToast(
         `Caching ${state.offlineCachedCount}/${state.offlineTotalCount} files`,
@@ -1139,10 +1142,12 @@
       header.appendChild(titleDiv);
       header.appendChild(badges);
 
-      /* Path */
+      /* Path (clean breadcrumb) */
       const pathDiv = document.createElement("div");
       pathDiv.className = "chapter-path";
-      pathDiv.textContent = entry.path;
+      pathDiv.textContent = entry.group
+        ? `${entry.sourceLabel} \u2022 ${entry.group}`
+        : entry.sourceLabel;
 
       /* Progress strip */
       const strip = document.createElement("div");
@@ -1321,10 +1326,20 @@
       if (err && err.name === "AbortError") return;
       if (!isActiveRequest(requestId, chapterId)) return;
       const msg = String(err.message || err);
-      setChapterMeta(entry, msg);
-      renderChapterContent(`<p class="empty-state">${escapeHtml(msg)}</p>`, {
-        useSavedPosition: false,
-      });
+      setChapterMeta(entry, "");
+      const safeMsg = escapeHtml(msg);
+      const retryId = `retry-${Date.now()}`;
+      renderChapterContent(
+        `<div class="error-card">
+        <p class="error-card-title">Failed to load chapter</p>
+        <p class="error-card-detail">${safeMsg}</p>
+        <button class="error-retry-btn" id="${retryId}" type="button">Retry</button>
+      </div>`,
+        { useSavedPosition: false },
+      );
+      /* Bind retry */
+      const retryBtn = document.getElementById(retryId);
+      if (retryBtn) retryBtn.addEventListener("click", () => openChapter(chapterId, options));
     } finally {
       if (requestId === state.requestSequence) {
         state.activeFetchController = null;
@@ -1739,7 +1754,7 @@
         'meta[name="theme-color"]:not(#themeColorMeta)',
       );
       if (existing) existing.remove();
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function updateReaderSurface(resolved) {
@@ -2100,25 +2115,11 @@
     return `Open ${entry.title} to start reading. Source: ${entry.sourceLabel}. Location: ${entry.path.replace(/\.md$/i, "").replace(/[_-]+/g, " ")}.`;
   }
 
-  function openSearchPanel() {
-    setSidebarOpen(true);
-    requestAnimationFrame(() => {
-      if (els.searchInput) {
-        try {
-          els.searchInput.focus({ preventScroll: true });
-        } catch (_) {
-          els.searchInput.focus();
-        }
-      }
-    });
-  }
-
   /* ─────────────────────────────────────────────────────────────
      READER GESTURES
   ───────────────────────────────────────────────────────────── */
   function bindReaderGestures() {
     bindEdgeSwipeNavigation();
-    bindPullDownSearch();
   }
 
   function animateReaderTransition() {
@@ -2194,56 +2195,6 @@
       )
         resetSwipe();
     });
-  }
-
-  function bindPullDownSearch() {
-    const surface = els.readerViewport || els.contentStage;
-    if (!surface) return;
-    const releaseThreshold = 74,
-      maxPull = 86;
-    let ref = null;
-
-    const clear = () => {
-      if (!ref) return;
-      surface.style.transform = "";
-      ref = null;
-    };
-
-    surface.addEventListener("touchstart", (e) => {
-      if (
-        isBookDetailOpen() ||
-        els.contentStage.scrollTop > 4 ||
-        e.touches.length > 1
-      )
-        return;
-      const touch = e.touches[0];
-      ref = { id: touch.identifier, startY: touch.clientY, dragged: false };
-    });
-
-    surface.addEventListener("touchmove", (e) => {
-      if (!ref) return;
-      const touch = [...e.touches].find((t) => t.identifier === ref.id);
-      if (!touch) return;
-      const dy = touch.clientY - ref.startY;
-      if (dy < 8) {
-        clear();
-        return;
-      }
-      ref.dragged = true;
-      surface.style.transform = `translateY(${Math.min(dy, maxPull)}px)`;
-    });
-
-    surface.addEventListener("touchend", (e) => {
-      if (!ref) return;
-      const touch = [...e.changedTouches].find((t) => t.identifier === ref.id);
-      if (!touch) return;
-      const dy = touch.clientY - ref.startY;
-      const reveal = ref.dragged && dy > releaseThreshold;
-      clear();
-      if (reveal) openSearchPanel();
-    });
-
-    surface.addEventListener("touchcancel", clear);
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -2352,7 +2303,7 @@
   function setStorageItem(key, value) {
     try {
       window.localStorage.setItem(key, value);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function readJSON(key, fallback) {
