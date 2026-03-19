@@ -113,6 +113,7 @@ jobs:
           import sys
           import time
           import urllib.error
+          import urllib.parse
           import urllib.request
 
           API_VERSION = "2022-11-28"
@@ -173,6 +174,7 @@ jobs:
               fail("GITHUB_REPOSITORY is missing or invalid.")
           owner, repo = repo_full.split("/", 1)
 
+          github_server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
           api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
           github_token = os.environ.get("GITHUB_TOKEN")
           artifact_id_raw = os.environ.get("ARTIFACT_ID")
@@ -197,8 +199,12 @@ jobs:
           oidc_req_token = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
           if not oidc_req_url or not oidc_req_token:
               fail("OIDC request environment is missing. Ensure `id-token: write` permission is set.")
+
+          # GitHub Pages expects the owner URL as audience (for this repo: https://github.com/<owner>)
+          oidc_audience = f"{github_server_url}/{owner}"
+          encoded_audience = urllib.parse.quote(oidc_audience, safe="")
           sep = "&" if "?" in oidc_req_url else "?"
-          oidc_url = f"{oidc_req_url}{sep}audience=pages.github.io"
+          oidc_url = f"{oidc_req_url}{sep}audience={encoded_audience}"
           oidc_payload = request_json(
               oidc_url,
               method="GET",
