@@ -26,6 +26,8 @@
   const FONT_SIZE_MAX = 32;
   const FONT_SIZE_STEP = 1;
   const SEARCH_DEBOUNCE_MS = 120;
+  const CHAPTER_LIST_BATCH_SIZE = 200;
+  const CHAPTER_LIST_SCROLL_THRESHOLD = 240;
   const SCROLL_SHOW_THRESHOLD = 280;
   const OFFLINE_WINDOW = 100;
   const OFFLINE_SW_URL = "./sw.js";
@@ -65,6 +67,8 @@
     filteredEntries: [],
     chapterButtonById: new Map(),
     activeChapterButtonId: null,
+    chapterRenderLimit: 0,
+    chapterRenderKey: "",
     currentId: null,
 
     /* Settings */
@@ -230,6 +234,9 @@
       "pointerleave",
       handleChapterListPointerEnd,
     );
+    els.chapterList.addEventListener("scroll", handleChapterListScroll, {
+      passive: true,
+    });
 
     /* Navigation */
     els.prevBtn.addEventListener("click", () => moveToSibling(-1));
@@ -1028,6 +1035,27 @@
     }, SEARCH_DEBOUNCE_MS);
   }
 
+  function resetChapterRenderLimit(filtered) {
+    if (!filtered.length) {
+      state.chapterRenderLimit = 0;
+      return;
+    }
+    state.chapterRenderLimit = Math.min(
+      filtered.length,
+      CHAPTER_LIST_BATCH_SIZE,
+    );
+  }
+
+  function extendChapterRenderLimit() {
+    if (state.chapterRenderLimit >= state.filteredEntries.length) return false;
+    state.chapterRenderLimit = Math.min(
+      state.filteredEntries.length,
+      state.chapterRenderLimit + CHAPTER_LIST_BATCH_SIZE,
+    );
+    renderChapterList();
+    return true;
+  }
+
   function renderChapterList() {
     if (state.searchRenderTimer) {
       clearTimeout(state.searchRenderTimer);
@@ -1036,6 +1064,9 @@
 
     const query = els.searchInput.value.trim().toLowerCase();
     const filter = state.settings.source;
+    const renderKey = `${filter}\u0000${query}`;
+    const renderKeyChanged = renderKey !== state.chapterRenderKey;
+    const previousScrollTop = els.chapterList.scrollTop;
 
     /* Resolve base entries for the current source filter */
     let baseEntries;
@@ -1054,8 +1085,23 @@
     const filtered = query
       ? baseEntries.filter((e) => e.searchText.includes(query))
       : baseEntries;
-
     state.filteredEntries = filtered;
+    state.chapterRenderKey = renderKey;
+
+    if (renderKeyChanged) {
+      resetChapterRenderLimit(filtered);
+    } else if (!filtered.length) {
+      state.chapterRenderLimit = 0;
+    } else if (state.chapterRenderLimit <= 0) {
+      resetChapterRenderLimit(filtered);
+    } else {
+      state.chapterRenderLimit = Math.min(
+        state.chapterRenderLimit,
+        filtered.length,
+      );
+    }
+
+    const visibleEntries = filtered.slice(0, state.chapterRenderLimit);
 
     const fragment = document.createDocumentFragment();
     const chapterButtonById = new Map();
@@ -1079,7 +1125,7 @@
     }
 
     let lastGroupKey = "";
-    for (const entry of filtered) {
+    for (const entry of visibleEntries) {
       const groupKey = entry.groupLabel;
 
       if (groupKey !== lastGroupKey) {
@@ -1167,10 +1213,43 @@
       chapterButtonById.set(entry.id, btn);
     }
 
+    if (visibleEntries.length < filtered.length) {
+      const loadMoreRow = document.createElement("li");
+      loadMoreRow.className = "chapter-row chapter-row-load-more";
+      loadMoreRow.setAttribute("role", "presentation");
+
+      const loadMoreBtn = document.createElement("button");
+      loadMoreBtn.type = "button";
+      loadMoreBtn.className = "icon-btn chapter-load-more-btn";
+      loadMoreBtn.dataset.action = "load-more";
+      loadMoreBtn.textContent =
+        `Show more chapters (${visibleEntries.length.toLocaleString()} / ` +
+        `${filtered.length.toLocaleString()})`;
+
+      loadMoreRow.appendChild(loadMoreBtn);
+      fragment.appendChild(loadMoreRow);
+    }
+
     state.chapterButtonById = chapterButtonById;
     els.chapterList.replaceChildren(fragment);
+    if (!renderKeyChanged) {
+      els.chapterList.scrollTop = previousScrollTop;
+    }
     updateLibraryMeta();
     updateNavButtons();
+  }
+
+  function handleChapterListScroll() {
+    if (!els.chapterList) return;
+    if (state.chapterRenderLimit >= state.filteredEntries.length) return;
+
+    const remaining =
+      els.chapterList.scrollHeight -
+      els.chapterList.scrollTop -
+      els.chapterList.clientHeight;
+    if (remaining <= CHAPTER_LIST_SCROLL_THRESHOLD) {
+      extendChapterRenderLimit();
+    }
   }
 
   function getProgressPercent(chapterId) {
