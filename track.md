@@ -52,22 +52,22 @@ Remaining episodes: 1840 (approximate)
 - [x] Episode 80
 - [x] Episode 81
 - [x] Episode 82
-- [ ] Episode 83
-- [ ] Episode 84
-- [ ] Episode 85
-- [ ] Episode 86
-- [ ] Episode 87
-- [ ] Episode 88
-- [ ] Episode 89
-- [ ] Episode 90
-- [ ] Episode 91
-- [ ] Episode 92
-- [ ] Episode 93
-- [ ] Episode 94
-- [ ] Episode 95
-- [ ] Episode 96
-- [ ] Episode 97
-- [ ] Episode 98
-- [ ] Episode 99
-- [ ] Episode 100
+- [x] Episode 83
+- [x] Episode 84
+- [x] Episode 85
+- [x] Episode 86
+- [x] Episode 87
+- [x] Episode 88
+- [x] Episode 89
+- [x] Episode 90
+- [x] Episode 91
+- [x] Episode 92
+- [x] Episode 93
+- [x] Episode 94
+- [x] Episode 95
+- [x] Episode 96
+- [x] Episode 97
+- [x] Episode 98
+- [x] Episode 99
+- [x] Episode 100
 
