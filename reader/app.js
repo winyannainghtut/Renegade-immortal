@@ -1344,6 +1344,11 @@
     }
     const target = e.target;
     if (!(target instanceof Element)) return;
+    const loadMoreBtn = target.closest("button[data-action='load-more']");
+    if (loadMoreBtn) {
+      extendChapterRenderLimit();
+      return;
+    }
     const btn = target.closest("button.chapter-item[data-chapter-id]");
     if (!btn) return;
     const id = btn.dataset.chapterId;
