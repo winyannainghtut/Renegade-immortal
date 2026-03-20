@@ -234,9 +234,10 @@
     /* Navigation */
     els.prevBtn.addEventListener("click", () => moveToSibling(-1));
     els.nextBtn.addEventListener("click", () => moveToSibling(1));
-    on(els.navLibraryBtn, "click", () => setSidebarOpen(true));
-    on(els.navPrevBtn, "click", () => moveToSibling(-1));
-    on(els.navNextBtn, "click", () => moveToSibling(1));
+    
+    if (els.navLibraryBtn) els.navLibraryBtn.addEventListener("click", () => setSidebarOpen(true));
+    if (els.navPrevBtn) els.navPrevBtn.addEventListener("click", () => moveToSibling(-1));
+    if (els.navNextBtn) els.navNextBtn.addEventListener("click", () => moveToSibling(1));
 
     /* Sidebar */
     els.openSidebarBtn.addEventListener("click", () => setSidebarOpen(true));
@@ -247,7 +248,7 @@
     els.toggleSettingsBtn.addEventListener("click", () =>
       setSettingsOpen(!state.settingsOpen),
     );
-    on(els.navSettingsBtn, "click", () =>
+    if (els.navSettingsBtn) els.navSettingsBtn.addEventListener("click", () =>
       setSettingsOpen(!state.settingsOpen),
     );
 
