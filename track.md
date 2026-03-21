@@ -4,5 +4,5 @@ Last updated: 2026-03-21 (UTC)
 
 ## Progress
 - Total English episodes available: 2088
-- Burmese translated episodes: 539
-- Remaining episodes: 1549 (approximate)
+- Burmese translated episodes: 556
+- Remaining episodes: 1532 (approximate)
