@@ -308,6 +308,8 @@
       saveSettings();
     });
     els.widthRange.addEventListener("input", () => {
+      // Width control is hidden on mobile — skip update to avoid wasted work
+      if (MOBILE_QUERY.matches) return;
       state.settings.width = clamp(Number(els.widthRange.value), 560, 1080);
       applyTypography();
       saveSettings();
@@ -783,7 +785,7 @@
   ───────────────────────────────────────────────────────────── */
   async function loadManifest() {
     try {
-      const res = await fetch("./manifest.json", { cache: "no-store" });
+      const res = await fetch("./manifest.json", { cache: "default" });
       if (!res.ok) throw new Error(`Unable to load manifest (${res.status})`);
 
       const payload = await res.json();
