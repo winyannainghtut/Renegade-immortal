@@ -4,14 +4,15 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f4efe4" id="themeColorMeta" />
+    <meta name="theme-color" content="#f6f1e7" id="themeColorMeta" />
     <meta name="description"
         content="Renegade Immortal novel reader – offline-capable, mobile-first chapter browser." />
     <title>Renegade Immortal Reader</title>
+    <link rel="icon" href="data:," />
     <link rel="manifest" href="./app-manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Padauk:wght@400;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
 </head>
 
@@ -45,7 +46,7 @@
 
     <div class="app-shell" id="appShell">
         <!-- ====== SIDEBAR / LIBRARY ====== -->
-        <aside class="sidebar" id="sidebar" aria-label="Chapter library">
+        <aside class="sidebar" id="sidebar" aria-label="Chapter library" aria-hidden="true" inert>
             <div class="sidebar-top">
                 <div>
                     <p class="eyebrow">Local Library</p>
@@ -80,7 +81,7 @@
             <div class="source-filter" id="sourceFilter" role="group" aria-label="Filter chapters"></div>
 
             <!-- Chapter list -->
-            <ul class="chapter-list" id="chapterList" role="listbox" aria-label="Chapters"></ul>
+            <ul class="chapter-list" id="chapterList" aria-label="Chapters"></ul>
         </aside>
 
         <!-- Sidebar backdrop -->
@@ -99,7 +100,7 @@
             <div class="reader-content-layer" id="readerViewport">
                 <section class="chapter-meta">
                     <div class="chapter-meta-top">
-                        <h2 id="chapterTitle">Select a chapter</h2>
+                        <h1 id="chapterTitle">Select a chapter</h1>
                         <div class="chapter-meta-badges" id="chapterMetaBadges"></div>
                     </div>
                     <p id="chapterInfo" class="sr-only" aria-live="polite">
@@ -107,7 +108,7 @@
                     </p>
                 </section>
 
-                <section class="content-stage" id="contentStage">
+                <section class="content-stage" id="contentStage" tabindex="0" aria-label="Chapter content">
                     <article class="content" id="content">
                         <p class="empty-state">
                             Pick any chapter from the library to start
@@ -118,7 +119,7 @@
             </div>
 
             <!-- ====== TOOLBAR (floating HUD) ====== -->
-            <header class="toolbar hud-layer" id="toolbar" aria-label="Reader controls">
+            <div class="toolbar hud-layer" id="toolbar" role="region" aria-label="Reader controls">
                 <div class="toolbar-row toolbar-primary">
                     <div class="toolbar-group">
                         <button class="icon-btn icon-only" id="openSidebarBtn" type="button" aria-label="Open library"
@@ -241,7 +242,7 @@
                         </div>
                     </div>
                 </div>
-            </header>
+            </div>
 
             <nav class="control-bubble-nav" id="bottomNav" aria-label="Reader navigation">
                 <button class="nav-btn" id="navLibraryBtn" type="button" aria-label="Library">
@@ -291,7 +292,7 @@
 
     <!-- Scroll to top FAB -->
     <button class="scroll-to-top is-hidden" id="scrollToTopBtn" type="button" aria-label="Scroll to top"
-        title="Scroll to top">
+        title="Scroll to top" tabindex="-1" aria-hidden="true">
         <svg class="icon-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 19V5M5 12l7-7 7 7" />
@@ -301,7 +302,7 @@
 
     <!-- Chapter detail sheet (long-press) -->
     <div class="detail-sheet" id="bookDetailSheet" role="dialog" aria-modal="true" aria-labelledby="bookDetailTitle"
-        tabindex="-1">
+        tabindex="-1" hidden aria-hidden="true" inert>
         <div class="detail-sheet-glass">
             <div class="detail-head">
                 <div>

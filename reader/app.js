@@ -88,6 +88,7 @@
     /* UI state */
     isLoadingChapter: false,
     settingsOpen: false,
+    sidebarReturnFocusEl: null,
     chromeVisible: true,
     readProgress: 0,
     lastContentScrollTop: 0,
@@ -387,6 +388,15 @@
     if (el) el.addEventListener(event, handler);
   }
 
+  function focusElement(el) {
+    if (!el || typeof el.focus !== "function") return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch (_) {
+      el.focus();
+    }
+  }
+
   /* ─────────────────────────────────────────────────────────────
      KEYBOARD
   ───────────────────────────────────────────────────────────── */
@@ -425,8 +435,23 @@
   ───────────────────────────────────────────────────────────── */
   function setSidebarOpen(open) {
     const shouldOpen = Boolean(open);
+    const wasOpen = isSidebarOpen();
+    if (shouldOpen && !wasOpen && document.activeElement instanceof HTMLElement) {
+      state.sidebarReturnFocusEl = document.activeElement;
+    }
     els.appShell.classList.toggle("sidebar-visible", shouldOpen);
-    if (shouldOpen) setChromeVisible(true);
+    if (els.sidebar) {
+      els.sidebar.toggleAttribute("inert", !shouldOpen);
+      els.sidebar.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
+    }
+    if (shouldOpen) {
+      setChromeVisible(true);
+      requestAnimationFrame(() => focusElement(els.closeSidebarBtn));
+    } else if (wasOpen && state.sidebarReturnFocusEl) {
+      const returnTarget = state.sidebarReturnFocusEl;
+      state.sidebarReturnFocusEl = null;
+      requestAnimationFrame(() => focusElement(returnTarget));
+    }
   }
 
   function isSidebarOpen() {
@@ -437,6 +462,7 @@
      SETTINGS PANEL
   ───────────────────────────────────────────────────────────── */
   function setSettingsOpen(open) {
+    const wasOpen = state.settingsOpen;
     state.settingsOpen = Boolean(open);
     if (state.settingsOpen) {
       setChromeVisible(true);
@@ -451,6 +477,9 @@
     /* Sync mobile nav settings button active state */
     if (els.navSettingsBtn) {
       els.navSettingsBtn.classList.toggle("nav-active", state.settingsOpen);
+    }
+    if (state.settingsOpen && !wasOpen) {
+      requestAnimationFrame(() => focusElement(els.themeSelect));
     }
   }
 
@@ -1132,7 +1161,6 @@
 
       if (groupKey !== lastGroupKey) {
         const groupLi = document.createElement("li");
-        groupLi.setAttribute("role", "presentation");
         const groupHead = document.createElement("div");
         groupHead.className = "chapter-group-header";
         groupHead.textContent = groupKey;
@@ -1143,15 +1171,13 @@
 
       const rowLi = document.createElement("li");
       rowLi.className = "chapter-row";
-      rowLi.setAttribute("role", "presentation");
 
       const btn = document.createElement("button");
       const isActive = entry.id === state.currentId;
       btn.type = "button";
       btn.className = `chapter-item${isActive ? " active" : ""}`;
       btn.dataset.chapterId = entry.id;
-      btn.setAttribute("role", "option");
-      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+      if (isActive) btn.setAttribute("aria-current", "page");
       if (isActive) state.activeChapterButtonId = entry.id;
 
       /* Header row: title + badges */
@@ -1218,7 +1244,6 @@
     if (visibleEntries.length < filtered.length) {
       const loadMoreRow = document.createElement("li");
       loadMoreRow.className = "chapter-row chapter-row-load-more";
-      loadMoreRow.setAttribute("role", "presentation");
 
       const loadMoreBtn = document.createElement("button");
       loadMoreBtn.type = "button";
@@ -1322,7 +1347,7 @@
       const prev = state.chapterButtonById.get(state.activeChapterButtonId);
       if (prev) {
         prev.classList.remove("active");
-        prev.setAttribute("aria-selected", "false");
+        prev.removeAttribute("aria-current");
       }
     }
     const next = state.chapterButtonById.get(chapterId);
@@ -1331,7 +1356,7 @@
       return;
     }
     next.classList.add("active");
-    next.setAttribute("aria-selected", "true");
+    next.setAttribute("aria-current", "page");
     state.activeChapterButtonId = chapterId;
   }
 
@@ -1830,8 +1855,8 @@
 
   function updateThemeColor(resolved) {
     const themeColors = {
-      light: "#f4efe4",
-      dark: "#000000",
+      light: "#f6f1e7",
+      dark: "#0c0e14",
       sepia: "#f5ead0",
     };
     const color = themeColors[resolved] || themeColors.light;
@@ -2138,6 +2163,13 @@
     if (shouldShow === state.scrollToTopVisible) return;
     state.scrollToTopVisible = shouldShow;
     els.scrollToTopBtn.classList.toggle("is-hidden", !shouldShow);
+    if (shouldShow) {
+      els.scrollToTopBtn.removeAttribute("tabindex");
+      els.scrollToTopBtn.removeAttribute("aria-hidden");
+    } else {
+      els.scrollToTopBtn.setAttribute("tabindex", "-1");
+      els.scrollToTopBtn.setAttribute("aria-hidden", "true");
+    }
   }
 
   function scrollToTop() {
@@ -2188,6 +2220,9 @@
     updateDetailBookmarkBtn(chapterId);
     els.bookDetailSheet.setAttribute("data-open", "true");
     els.bookDetailSheet.removeAttribute("hidden");
+    els.bookDetailSheet.removeAttribute("aria-hidden");
+    els.bookDetailSheet.removeAttribute("inert");
+    requestAnimationFrame(() => focusElement(els.bookDetailSheet));
     cancelLongPress();
   }
 
@@ -2196,6 +2231,9 @@
     state.detailChapterId = null;
     els.bookDetailSheet.removeAttribute("data-open");
     els.bookDetailSheet.dataset.open = "false";
+    els.bookDetailSheet.setAttribute("aria-hidden", "true");
+    els.bookDetailSheet.setAttribute("inert", "");
+    els.bookDetailSheet.setAttribute("hidden", "");
   }
 
   function makeEntryExcerpt(entry) {

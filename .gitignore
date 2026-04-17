@@ -4,9 +4,36 @@ Thumbs.db
 *.swp
 *.swo
 
-# Local assistant scratch
+# AI / agent tooling
 .trash/
 .agents/
+.aider*
+.augment/
+.claude/
+.codex/
+.continue/
+.crush/
+.cursor/
+.devin/
+.gemini/
+.goose/
+.junie/
+.kiro/
+.kilocode/
+.openhands/
+.qodo/
+.roo/
+.serena/
+.sourcegraph/
+.tabnine/
+.tessl/
+.windsurf/
+.mcp.json
+mcp.json
+tessl.json
+.github/skills/
+.vscode/mcp.json
+.vscode/skills/
 
 # Python bytecode
 __pycache__/
