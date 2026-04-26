@@ -97,7 +97,7 @@
             </div>
 
             <!-- Scrollable viewport -->
-            <div class="reader-content-layer" id="readerViewport">
+            <div class="reader-content-layer" id="readerViewport" tabindex="0" aria-label="Reader viewport">
                 <section class="chapter-meta">
                     <div class="chapter-meta-top">
                         <h1 id="chapterTitle">Select a chapter</h1>
@@ -159,6 +159,21 @@
                             </svg>
                             <span class="sr-only">Bookmark</span>
                         </button>
+                        <button class="icon-btn icon-only auto-scroll-toolbar-btn" id="autoScrollToolbarBtn"
+                            type="button" aria-label="Start auto scroll" title="Start auto scroll"
+                            aria-pressed="false">
+                            <svg class="icon-glyph auto-scroll-play-icon" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                stroke-linejoin="round" aria-hidden="true">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            <svg class="icon-glyph auto-scroll-pause-icon" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                stroke-linejoin="round" aria-hidden="true">
+                                <path d="M8 5v14M16 5v14" />
+                            </svg>
+                            <span class="sr-only">Auto scroll</span>
+                        </button>
                         <button class="icon-btn icon-only" id="toggleSettingsBtn" type="button"
                             aria-controls="settingsPanel" aria-expanded="false" aria-label="Open controls"
                             title="Reader controls">
@@ -211,6 +226,12 @@
                             Text Width
                             <span id="widthValue" class="setting-value"></span>
                             <input id="widthRange" type="range" min="560" max="1080" step="20" />
+                        </label>
+
+                        <label for="autoScrollSpeedRange" class="auto-scroll-setting">
+                            Auto Scroll
+                            <span id="autoScrollSpeedValue" class="setting-value"></span>
+                            <input id="autoScrollSpeedRange" type="range" min="56" max="160" step="4" />
                         </label>
 
                         <!-- Reading stats -->
@@ -285,6 +306,24 @@
                     <span class="nav-label">Settings</span>
                 </button>
             </nav>
+
+            <div class="auto-scroll-control" id="autoScrollControl" aria-live="polite">
+                <button class="auto-scroll-toggle" id="autoScrollToggleBtn" type="button"
+                    aria-label="Start auto scroll" aria-pressed="false">
+                    <svg class="icon-glyph auto-scroll-play-icon" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <svg class="icon-glyph auto-scroll-pause-icon" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"
+                        aria-hidden="true">
+                        <path d="M8 5v14M16 5v14" />
+                    </svg>
+                    <span class="auto-scroll-label" id="autoScrollLabel">Auto</span>
+                    <span class="auto-scroll-speed" id="autoScrollSpeedPill">56 px/s</span>
+                </button>
+            </div>
         </main>
         <!-- /reader-panel -->
     </div>

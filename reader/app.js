@@ -29,6 +29,9 @@
   const CHAPTER_LIST_BATCH_SIZE = 200;
   const CHAPTER_LIST_SCROLL_THRESHOLD = 240;
   const SCROLL_SHOW_THRESHOLD = 280;
+  const AUTO_SCROLL_SPEED_MIN = 56;
+  const AUTO_SCROLL_SPEED_MAX = 160;
+  const AUTO_SCROLL_SPEED_DEFAULT = 56;
   const OFFLINE_WINDOW = 100;
   const OFFLINE_SW_URL = "./sw.js";
   const OFFLINE_SHELL_URLS = [
@@ -48,6 +51,7 @@
     fontSize: 19,
     lineHeight: 1.75,
     width: 780,
+    autoScrollSpeed: AUTO_SCROLL_SPEED_DEFAULT,
     source: "all",
   };
 
@@ -95,6 +99,12 @@
     scrollToTopVisible: false,
     scrollButtonRaf: null,
     pendingScrollTop: 0,
+    autoScrollActive: false,
+    autoScrollRaf: null,
+    autoScrollLastTs: 0,
+    autoScrollTop: 0,
+    autoScrollFallbackTop: 0,
+    autoScrollProgrammatic: false,
 
     /* Timers */
     saveTimer: null,
@@ -151,13 +161,20 @@
     lineHeightValue: q("lineHeightValue"),
     widthRange: q("widthRange"),
     widthValue: q("widthValue"),
+    autoScrollSpeedRange: q("autoScrollSpeedRange"),
+    autoScrollSpeedValue: q("autoScrollSpeedValue"),
+    autoScrollToolbarBtn: q("autoScrollToolbarBtn"),
+    autoScrollToggleBtn: q("autoScrollToggleBtn"),
+    autoScrollControl: q("autoScrollControl"),
+    autoScrollLabel: q("autoScrollLabel"),
+    autoScrollSpeedPill: q("autoScrollSpeedPill"),
     offlineCacheBtn: q("offlineCacheBtn"),
     offlineStatus: q("offlineStatus"),
     chapterTitle: q("chapterTitle"),
     chapterInfo: q("chapterInfo"),
     chapterMetaBadges: q("chapterMetaBadges"),
     content: q("content"),
-    contentStage: q("contentStage"),
+    contentStage: q("readerViewport"),
     readerPanel: q("readerPanel"),
     ambientGlow: q("ambientGlow"),
     readProgressFill: q("readProgressFill"),
@@ -316,6 +333,18 @@
       saveSettings();
     });
 
+    const onAutoScrollSpeedInput = () => {
+      state.settings.autoScrollSpeed = normalizeAutoScrollSpeed(
+        els.autoScrollSpeedRange.value,
+      );
+      applyAutoScrollSettings();
+      saveSettings();
+    };
+    on(els.autoScrollSpeedRange, "input", onAutoScrollSpeedInput);
+    on(els.autoScrollSpeedRange, "change", onAutoScrollSpeedInput);
+    on(els.autoScrollToolbarBtn, "click", () => toggleAutoScroll());
+    on(els.autoScrollToggleBtn, "click", () => toggleAutoScroll());
+
     /* Offline cache */
     on(els.offlineCacheBtn, "click", () => startOfflineDownload());
 
@@ -354,6 +383,15 @@
 
     /* Scroll */
     els.contentStage.addEventListener("scroll", handleReaderScroll, {
+      passive: true,
+    });
+    els.contentStage.addEventListener("wheel", stopAutoScrollForUserInput, {
+      passive: true,
+    });
+    els.contentStage.addEventListener("touchstart", stopAutoScrollForUserInput, {
+      passive: true,
+    });
+    els.contentStage.addEventListener("pointerdown", stopAutoScrollForUserInput, {
       passive: true,
     });
     window.addEventListener("scroll", handleWindowScroll, { passive: true });
@@ -401,6 +439,15 @@
      KEYBOARD
   ───────────────────────────────────────────────────────────── */
   function handleGlobalKeydown(e) {
+    if (
+      state.autoScrollActive &&
+      [" ", "PageDown", "PageUp", "Home", "End", "ArrowUp", "ArrowDown"].includes(
+        e.key,
+      )
+    ) {
+      stopAutoScroll();
+    }
+
     if (e.key === "Escape") {
       if (isBookDetailOpen()) {
         closeBookDetailSheet();
@@ -1388,6 +1435,9 @@
   ───────────────────────────────────────────────────────────── */
   async function openChapter(chapterId, options = {}) {
     if (isBookDetailOpen()) closeBookDetailSheet();
+    stopAutoScroll();
+    state.autoScrollFallbackTop = 0;
+    clearAutoScrollFallback();
 
     const entry = state.entriesById.get(chapterId);
     if (!entry) return;
@@ -1629,6 +1679,7 @@
   function setChapterLoading(loading) {
     state.isLoadingChapter = Boolean(loading);
     updateNavButtons();
+    updateAutoScrollUI();
   }
 
   function updateChapterMetaBadges(chapterId) {
@@ -1831,11 +1882,15 @@
     els.fontSizeRange.value = String(s.fontSize);
     els.lineHeightRange.value = String(s.lineHeight);
     els.widthRange.value = String(s.width);
+    if (els.autoScrollSpeedRange) {
+      els.autoScrollSpeedRange.value = String(s.autoScrollSpeed);
+    }
   }
 
   function applyVisualSettings() {
     applyTheme();
     applyTypography();
+    applyAutoScrollSettings();
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -1855,8 +1910,8 @@
 
   function updateThemeColor(resolved) {
     const themeColors = {
-      light: "#f6f1e7",
-      dark: "#0c0e14",
+      light: "#f7f1e3",
+      dark: "#11110f",
       sepia: "#f5ead0",
     };
     const color = themeColors[resolved] || themeColors.light;
@@ -1884,12 +1939,12 @@
     if (els.ambientGlow) {
       if (isDark) {
         els.ambientGlow.style.background =
-          "radial-gradient(700px 700px at 15% 15%, color-mix(in srgb, var(--accent-b) 16%, transparent), transparent 60%)";
-        els.ambientGlow.style.opacity = "0.44";
+          "linear-gradient(90deg, color-mix(in srgb, var(--text) 5%, transparent), transparent 22%, transparent 78%, color-mix(in srgb, var(--text) 5%, transparent))";
+        els.ambientGlow.style.opacity = "0.2";
       } else {
         els.ambientGlow.style.background =
-          "radial-gradient(700px 700px at 15% 15%, color-mix(in srgb, var(--accent-a) 12%, transparent), transparent 62%)";
-        els.ambientGlow.style.opacity = "0.52";
+          "linear-gradient(90deg, color-mix(in srgb, var(--text) 3%, transparent), transparent 22%, transparent 78%, color-mix(in srgb, var(--text) 3%, transparent))";
+        els.ambientGlow.style.opacity = "0.28";
       }
     }
   }
@@ -1937,6 +1992,25 @@
       els.increaseFontSizeBtn.disabled = fontSize >= FONT_SIZE_MAX;
   }
 
+  function normalizeAutoScrollSpeed(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return AUTO_SCROLL_SPEED_DEFAULT;
+    return clamp(
+      Math.round(n / 4) * 4,
+      AUTO_SCROLL_SPEED_MIN,
+      AUTO_SCROLL_SPEED_MAX,
+    );
+  }
+
+  function applyAutoScrollSettings() {
+    const speed = normalizeAutoScrollSpeed(state.settings.autoScrollSpeed);
+    state.settings.autoScrollSpeed = speed;
+    if (els.autoScrollSpeedRange) els.autoScrollSpeedRange.value = String(speed);
+    if (els.autoScrollSpeedValue) els.autoScrollSpeedValue.textContent = `${speed} px/s`;
+    if (els.autoScrollSpeedPill) els.autoScrollSpeedPill.textContent = `${speed} px/s`;
+    updateAutoScrollUI();
+  }
+
   function normalizeTheme(value) {
     return VALID_THEMES.has(value) ? value : defaultSettings.theme;
   }
@@ -1948,6 +2022,7 @@
       fontSize: normalizeFontSize(src.fontSize),
       lineHeight: clamp(Number(src.lineHeight), 1.35, 2.2),
       width: clamp(Number(src.width), 560, 1080),
+      autoScrollSpeed: normalizeAutoScrollSpeed(src.autoScrollSpeed),
       source: asNonEmpty(src.source) || FILTER_ALL,
     };
   }
@@ -1960,6 +2035,140 @@
   /* ─────────────────────────────────────────────────────────────
      SCROLL / PROGRESS
   ───────────────────────────────────────────────────────────── */
+  function toggleAutoScroll(force) {
+    const next = typeof force === "boolean" ? force : !state.autoScrollActive;
+    if (next) startAutoScroll();
+    else stopAutoScroll();
+  }
+
+  function startAutoScroll() {
+    if (!state.currentId || state.isLoadingChapter || !els.contentStage) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const maxTop = getReaderMaxScrollTop();
+    if (maxTop <= 0 || els.contentStage.scrollTop >= maxTop - 1) return;
+
+    state.autoScrollActive = true;
+    state.autoScrollLastTs = 0;
+    state.autoScrollTop = Math.max(
+      state.autoScrollFallbackTop,
+      els.contentStage.scrollTop,
+    );
+    setChromeVisible(false);
+    updateAutoScrollUI();
+    if (state.autoScrollRaf === null) {
+      state.autoScrollRaf = requestAnimationFrame(stepAutoScroll);
+    }
+  }
+
+  function stopAutoScroll() {
+    state.autoScrollActive = false;
+    state.autoScrollLastTs = 0;
+    state.autoScrollFallbackTop = Math.max(
+      state.autoScrollFallbackTop,
+      state.autoScrollTop,
+    );
+    if (state.autoScrollRaf !== null) {
+      cancelAnimationFrame(state.autoScrollRaf);
+      state.autoScrollRaf = null;
+    }
+    state.autoScrollProgrammatic = false;
+    updateAutoScrollUI();
+  }
+
+  function stopAutoScrollForUserInput() {
+    if (!state.autoScrollActive || state.autoScrollProgrammatic) return;
+    stopAutoScroll();
+  }
+
+  function stepAutoScroll(ts) {
+    if (!state.autoScrollActive || !els.contentStage) {
+      state.autoScrollRaf = null;
+      return;
+    }
+
+    const maxTop = getReaderMaxScrollTop();
+    const current = Math.max(
+      state.autoScrollFallbackTop,
+      els.contentStage.scrollTop,
+    );
+    if (maxTop <= 0 || current >= maxTop - 1) {
+      stopAutoScroll();
+      return;
+    }
+
+    if (!state.autoScrollLastTs) state.autoScrollLastTs = ts;
+    const elapsed = Math.min(64, Math.max(0, ts - state.autoScrollLastTs));
+    state.autoScrollLastTs = ts;
+    const distance =
+      (normalizeAutoScrollSpeed(state.settings.autoScrollSpeed) * elapsed) /
+      1000;
+    state.autoScrollTop = Math.max(state.autoScrollTop, current) + distance;
+    const nextTop = Math.min(maxTop, state.autoScrollTop);
+
+    state.autoScrollProgrammatic = true;
+    els.contentStage.scrollTop = nextTop;
+    if (els.contentStage.scrollTop < nextTop - 1) {
+      state.autoScrollFallbackTop = nextTop;
+      els.contentStage.style.transform = `translate3d(0, -${nextTop}px, 0)`;
+      els.contentStage.style.willChange = "transform";
+      syncAutoScrollProgress(nextTop, maxTop);
+    } else {
+      state.autoScrollFallbackTop = 0;
+      clearAutoScrollFallback();
+    }
+    requestAnimationFrame(() => {
+      state.autoScrollProgrammatic = false;
+    });
+    state.autoScrollRaf = requestAnimationFrame(stepAutoScroll);
+  }
+
+  function syncAutoScrollProgress(scrollTop, maxTop) {
+    if (!state.currentId || maxTop <= 0) return;
+    const ratio = clamp(Number(scrollTop) / maxTop, 0, 1);
+    setChapterProgress(state.currentId, scrollTop, ratio, ratio * 100);
+    scheduleProgressSave();
+    applyProgressBar(ratio * 100);
+  }
+
+  function clearAutoScrollFallback() {
+    if (!els.contentStage) return;
+    els.contentStage.style.removeProperty("transform");
+    els.contentStage.style.removeProperty("will-change");
+  }
+
+  function getReaderMaxScrollTop() {
+    if (!els.contentStage) return 0;
+    return Math.max(
+      0,
+      els.contentStage.scrollHeight - els.contentStage.clientHeight,
+    );
+  }
+
+  function updateAutoScrollUI() {
+    const active = state.autoScrollActive;
+    const label = active ? "Pause auto scroll" : "Start auto scroll";
+    const visible = Boolean(state.currentId);
+    const controls = [els.autoScrollToolbarBtn, els.autoScrollToggleBtn];
+
+    if (els.appShell) {
+      els.appShell.classList.toggle("auto-scroll-active", active);
+    }
+    if (els.autoScrollControl) {
+      els.autoScrollControl.classList.toggle("is-hidden", !visible);
+    }
+    if (els.autoScrollLabel) {
+      els.autoScrollLabel.textContent = active ? "Scrolling" : "Auto";
+    }
+
+    controls.forEach((btn) => {
+      if (!btn) return;
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+      btn.setAttribute("aria-label", label);
+      btn.title = label;
+      btn.disabled = !visible || state.isLoadingChapter;
+    });
+  }
+
   function handleReaderScroll() {
     const scrollTop = els.contentStage.scrollTop;
 
@@ -2009,6 +2218,11 @@
 
     if (current <= 18) {
       if (!state.chromeVisible) setChromeVisible(true);
+      return;
+    }
+
+    if (state.autoScrollActive) {
+      if (state.chromeVisible) setChromeVisible(false);
       return;
     }
 
@@ -2173,6 +2387,8 @@
   }
 
   function scrollToTop() {
+    state.autoScrollFallbackTop = 0;
+    clearAutoScrollFallback();
     try {
       els.contentStage.scrollTo({ top: 0, behavior: "smooth" });
     } catch (_) {

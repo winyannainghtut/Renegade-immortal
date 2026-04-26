@@ -11,28 +11,28 @@
     --safe-left: env(safe-area-inset-left, 0px);
 
     /* Backgrounds */
-    --app-bg: #f6f1e7;
-    --app-bg-2: #ede5d4;
-    --app-bg-3: #faf6ee;
+    --app-bg: #f7f1e3;
+    --app-bg-2: #ebe0c8;
+    --app-bg-3: #fffaf0;
 
     /* Surfaces */
-    --surface: color-mix(in srgb, #fff 86%, #f2eadf);
-    --surface-2: color-mix(in srgb, #fff 93%, #f6efe5);
-    --surface-alpha-2: 0.78;
-    --surface-border: color-mix(in srgb, #fff 42%, transparent);
+    --surface: #fbf4e5;
+    --surface-2: #fff9ee;
+    --surface-alpha-2: 0.96;
+    --surface-border: color-mix(in srgb, #6b5c45 22%, transparent);
 
     /* Text */
-    --text: #2b2318;
-    --text-muted: #756452;
-    --line: color-mix(in srgb, #584733 24%, transparent);
+    --text: #1f1b15;
+    --text-muted: #6c604f;
+    --line: color-mix(in srgb, #3a3328 26%, transparent);
 
     /* Accent — warm gold */
-    --accent: #b8860b;
-    --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
-    --neon: #d4a84b;
-    --accent-a: #c9973a;
-    --accent-b: #8a6b2f;
-    --accent-c: #e2c080;
+    --accent: #8f6b2f;
+    --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+    --neon: #b78b3a;
+    --accent-a: #a57b36;
+    --accent-b: #5f553f;
+    --accent-c: #d8be84;
 
     /* Typography */
     --reader-font-size: 19px;
@@ -45,8 +45,8 @@
     --reader-ui-font: "Inter", "SF Pro Display", system-ui, sans-serif;
 
     /* Effects */
-    --shadow-strong: 0 20px 56px color-mix(in srgb, #000 16%, transparent);
-    --shadow-soft: 0 8px 20px color-mix(in srgb, #000 10%, transparent);
+    --shadow-strong: 0 14px 34px color-mix(in srgb, #3a2a15 13%, transparent);
+    --shadow-soft: 0 5px 14px color-mix(in srgb, #3a2a15 10%, transparent);
     --squircle: 14px;
     --squircle-large: 18px;
     --panel-blur: 18px;
@@ -71,25 +71,25 @@
 
 /* â”€â”€ Dark Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 html[data-theme="dark"] {
-    --app-bg: #0c0e14;
-    --app-bg-2: #12141c;
-    --app-bg-3: #181b24;
+    --app-bg: #11110f;
+    --app-bg-2: #171714;
+    --app-bg-3: #1d1c18;
 
-    --surface: color-mix(in srgb, #181b24 94%, transparent);
-    --surface-2: color-mix(in srgb, #1e2130 95%, transparent);
-    --surface-alpha-2: 0.88;
-    --surface-border: color-mix(in srgb, #fff 9%, transparent);
+    --surface: #181814;
+    --surface-2: #202018;
+    --surface-alpha-2: 0.96;
+    --surface-border: color-mix(in srgb, #d8ceb8 14%, transparent);
 
-    --text: #e8e6e3;
-    --text-muted: #8a8a96;
-    --line: color-mix(in srgb, #555566 32%, transparent);
+    --text: #e6decc;
+    --text-muted: #aaa08e;
+    --line: color-mix(in srgb, #d8ceb8 20%, transparent);
 
-    --accent: #d4a84b;
-    --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
-    --neon: #f0c565;
-    --accent-a: #8a6b2f;
-    --accent-b: #c49a40;
-    --accent-c: #5e4820;
+    --accent: #c0a16a;
+    --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+    --neon: #d4bb84;
+    --accent-a: #89704d;
+    --accent-b: #c0a16a;
+    --accent-c: #534833;
 
     --shadow-strong: 0 24px 64px color-mix(in srgb, #000 68%, transparent);
     --shadow-soft: 0 8px 22px color-mix(in srgb, #000 52%, transparent);
@@ -152,13 +152,7 @@ body {
     font-family: var(--reader-ui-font);
     color: var(--text);
     background:
-        radial-gradient(1200px 720px at -12% -10%,
-            var(--app-bg-2),
-            transparent 55%),
-        radial-gradient(960px 640px at 102% 0%,
-            var(--app-bg-3),
-            transparent 58%),
-        var(--app-bg);
+        linear-gradient(180deg, var(--app-bg-3), var(--app-bg) 42%, var(--app-bg-2));
     /* Prevent iOS rubber-band overscroll on the body itself */
     overscroll-behavior: none;
 }
@@ -170,17 +164,17 @@ body {
     pointer-events: none;
     z-index: 0;
     background:
-        radial-gradient(800px 800px at 10% 10%,
-            color-mix(in srgb, var(--accent-a) 14%, transparent),
-            transparent 60%),
-        radial-gradient(600px 600px at 85% 80%,
-            color-mix(in srgb, var(--accent-c) 10%, transparent),
-            transparent 60%);
+        linear-gradient(90deg,
+            color-mix(in srgb, var(--text) 3%, transparent),
+            transparent 22%,
+            transparent 78%,
+            color-mix(in srgb, var(--text) 3%, transparent));
     mix-blend-mode: normal;
-    animation: ambientDrift 25s ease-in-out infinite alternate;
+    animation: none;
     transition:
         background 400ms ease,
         opacity 400ms ease;
+    opacity: 0.28;
 }
 
 @keyframes ambientDrift {
@@ -587,14 +581,13 @@ aside.sidebar {
     inset: 0;
     pointer-events: none;
     background:
-        radial-gradient(980px 640px at 6% 12%,
-            color-mix(in srgb, var(--accent-a) 10%, transparent),
-            transparent 58%),
-        radial-gradient(760px 500px at 95% 0%,
-            color-mix(in srgb, var(--accent-b) 10%, transparent),
-            transparent 56%),
+        linear-gradient(90deg,
+            color-mix(in srgb, var(--text) 3%, transparent),
+            transparent 12%,
+            transparent 88%,
+            color-mix(in srgb, var(--text) 3%, transparent)),
         var(--app-bg);
-    opacity: 0.54;
+    opacity: 0.68;
     z-index: 0;
 }
 
@@ -613,12 +606,8 @@ aside.sidebar {
     height: 100%;
     width: 0%;
     border-radius: 0;
-    background: linear-gradient(90deg,
-            var(--accent),
-            var(--neon));
-    box-shadow:
-        0 0 12px color-mix(in srgb, var(--accent) 40%, transparent),
-        0 0 4px color-mix(in srgb, var(--neon) 30%, transparent);
+    background: var(--accent);
+    box-shadow: none;
     transition: width 200ms linear;
 }
 
@@ -628,9 +617,15 @@ aside.sidebar {
     z-index: 1;
     flex: 1 1 auto;
     min-height: 0;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    display: block;
     padding: calc(92px + var(--safe-top)) clamp(14px, 3vw, 28px) calc(24px + var(--safe-bottom)) clamp(14px, 3vw, 28px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable both-edges;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 
 /* Chapter meta header */
@@ -697,18 +692,14 @@ aside.sidebar {
 
 /* Content stage */
 .content-stage {
-    overflow-y: auto;
-    overflow-x: hidden;
-    min-height: 0;
-    scrollbar-gutter: stable both-edges;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    overflow: visible;
+    min-height: auto;
     /* Tell the browser only vertical panning is intended here;
        prevents Android from intercepting horizontal swipes as page-back */
     touch-action: pan-y;
 }
 
+.reader-content-layer:focus-visible,
 .content-stage:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--accent) 54%, transparent);
     outline-offset: 3px;
@@ -825,9 +816,9 @@ aside.sidebar {
     max-height: calc(100dvh - 84px);
     border-radius: 22px;
     border: 1px solid color-mix(in srgb, var(--surface-border) 58%, transparent);
-    background: color-mix(in srgb, var(--surface-2) 80%, transparent);
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    background: color-mix(in srgb, var(--surface-2) 96%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     box-shadow:
         var(--shadow-strong),
         inset 0 0 0 0.5px color-mix(in srgb, var(--surface-border) 18%, transparent);
@@ -862,7 +853,7 @@ aside.sidebar {
 
 .toolbar-secondary {
     padding: 8px;
-    background: color-mix(in srgb, white 14%, transparent);
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
     border-radius: 16px;
     border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
     overflow-y: auto;
@@ -1092,6 +1083,35 @@ select:focus {
     stroke: var(--bookmark-active);
 }
 
+.auto-scroll-toolbar-btn[aria-pressed="true"],
+.auto-scroll-toggle[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--accent) 82%, transparent);
+    background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface-2));
+    color: var(--accent);
+}
+
+.auto-scroll-toggle[aria-pressed="true"] {
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent),
+        var(--shadow-soft);
+}
+
+.auto-scroll-toggle[aria-pressed="true"] .auto-scroll-speed {
+    color: var(--accent);
+}
+
+.auto-scroll-pause-icon {
+    display: none;
+}
+
+[aria-pressed="true"] > .auto-scroll-play-icon {
+    display: none;
+}
+
+[aria-pressed="true"] > .auto-scroll-pause-icon {
+    display: block;
+}
+
 .icon-glyph {
     width: 19px;
     height: 19px;
@@ -1111,9 +1131,9 @@ select:focus {
     padding: 6px 10px;
     border-radius: 22px;
     border: 1px solid color-mix(in srgb, var(--surface-border) 62%, transparent);
-    background: color-mix(in srgb, var(--surface-2) 82%, transparent);
-    backdrop-filter: blur(28px) saturate(1.4);
-    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    background: color-mix(in srgb, var(--surface-2) 96%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     box-shadow:
         var(--shadow-strong),
         0 0 0 0.5px color-mix(in srgb, var(--surface-border) 30%, transparent);
@@ -1186,6 +1206,69 @@ select:focus {
 }
 
 /* â”€â”€ Scroll-to-top FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.auto-scroll-control {
+    position: fixed;
+    z-index: 126;
+    left: 50%;
+    bottom: calc(74px + var(--safe-bottom));
+    transform: translateX(-50%);
+    transition:
+        opacity 180ms ease,
+        transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.auto-scroll-control.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(12px);
+}
+
+.auto-scroll-toggle {
+    min-height: 44px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--line) 58%, transparent);
+    background: color-mix(in srgb, var(--surface-2) 94%, transparent);
+    color: var(--text);
+    box-shadow: var(--shadow-soft);
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font: inherit;
+    font-family: var(--reader-ui-font);
+    font-weight: 650;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.auto-scroll-toggle:active {
+    transform: scale(0.97);
+}
+
+.auto-scroll-toggle:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 62%, transparent);
+    outline-offset: 2px;
+}
+
+.auto-scroll-label {
+    font-size: 0.78rem;
+}
+
+.auto-scroll-speed {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding-left: 2px;
+}
+
+.app-shell.reader-chrome-hidden:not(.auto-scroll-active) .auto-scroll-control {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(12px);
+}
+
 .scroll-to-top {
     position: fixed;
     right: calc(20px + var(--safe-right));
