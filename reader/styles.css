@@ -617,15 +617,9 @@ aside.sidebar {
     z-index: 1;
     flex: 1 1 auto;
     min-height: 0;
-    display: block;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
     padding: calc(92px + var(--safe-top)) clamp(14px, 3vw, 28px) calc(24px + var(--safe-bottom)) clamp(14px, 3vw, 28px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-gutter: stable both-edges;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
 }
 
 /* Chapter meta header */
@@ -692,14 +686,18 @@ aside.sidebar {
 
 /* Content stage */
 .content-stage {
-    overflow: visible;
-    min-height: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    scrollbar-gutter: stable both-edges;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     /* Tell the browser only vertical panning is intended here;
        prevents Android from intercepting horizontal swipes as page-back */
     touch-action: pan-y;
 }
 
-.reader-content-layer:focus-visible,
 .content-stage:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--accent) 54%, transparent);
     outline-offset: 3px;

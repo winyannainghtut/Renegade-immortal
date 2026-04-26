@@ -174,7 +174,7 @@
     chapterInfo: q("chapterInfo"),
     chapterMetaBadges: q("chapterMetaBadges"),
     content: q("content"),
-    contentStage: q("readerViewport"),
+    contentStage: q("contentStage"),
     readerPanel: q("readerPanel"),
     ambientGlow: q("ambientGlow"),
     readProgressFill: q("readProgressFill"),
@@ -2053,6 +2053,7 @@
       state.autoScrollFallbackTop,
       els.contentStage.scrollTop,
     );
+    els.contentStage.style.scrollBehavior = "auto";
     setChromeVisible(false);
     updateAutoScrollUI();
     if (state.autoScrollRaf === null) {
@@ -2072,6 +2073,7 @@
       state.autoScrollRaf = null;
     }
     state.autoScrollProgrammatic = false;
+    els.contentStage.style.removeProperty("scroll-behavior");
     updateAutoScrollUI();
   }
 
@@ -2109,8 +2111,8 @@
     els.contentStage.scrollTop = nextTop;
     if (els.contentStage.scrollTop < nextTop - 1) {
       state.autoScrollFallbackTop = nextTop;
-      els.contentStage.style.transform = `translate3d(0, -${nextTop}px, 0)`;
-      els.contentStage.style.willChange = "transform";
+      els.content.style.transform = `translate3d(0, -${nextTop}px, 0)`;
+      els.content.style.willChange = "transform";
       syncAutoScrollProgress(nextTop, maxTop);
     } else {
       state.autoScrollFallbackTop = 0;
@@ -2131,9 +2133,9 @@
   }
 
   function clearAutoScrollFallback() {
-    if (!els.contentStage) return;
-    els.contentStage.style.removeProperty("transform");
-    els.contentStage.style.removeProperty("will-change");
+    if (!els.content) return;
+    els.content.style.removeProperty("transform");
+    els.content.style.removeProperty("will-change");
   }
 
   function getReaderMaxScrollTop() {
