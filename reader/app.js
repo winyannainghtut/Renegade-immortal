@@ -2496,9 +2496,12 @@
   function bindEdgeSwipeNavigation() {
     const container = els.contentStage || els.readerPanel;
     if (!container) return;
-    const swipeThreshold = 78;
-    const verticalLimit = 52;
-    const dominanceRatio = 1.45;
+    const getSwipeThreshold = () =>
+      Math.min(220, Math.max(118, window.innerWidth * 0.32));
+    const verticalCancelDistance = 42;
+    const verticalFinalizeLimit = 48;
+    const verticalCancelRatio = 1.9;
+    const dominanceRatio = 2.25;
 
     const resetSwipe = () => {
       state.pageSwipeState = null;
@@ -2540,8 +2543,8 @@
       s.lastX = e.clientX;
       s.lastY = e.clientY;
       if (
-        Math.abs(dy) > verticalLimit &&
-        Math.abs(dy) > Math.abs(dx) / dominanceRatio
+        Math.abs(dy) > verticalCancelDistance &&
+        Math.abs(dy) > Math.abs(dx) / verticalCancelRatio
       ) {
         resetSwipe();
       }
@@ -2552,8 +2555,10 @@
       if (!s || s.pointerId !== e.pointerId) return;
       const dx = e.clientX - s.startX;
       const dy = e.clientY - s.startY;
+      const swipeThreshold = getSwipeThreshold();
       const isHorizontal =
         Math.abs(dx) >= swipeThreshold &&
+        Math.abs(dy) <= verticalFinalizeLimit &&
         Math.abs(dx) > Math.abs(dy) * dominanceRatio;
       if (isHorizontal) {
         e.preventDefault();
