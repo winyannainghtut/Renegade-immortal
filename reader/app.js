@@ -44,7 +44,15 @@
     OFFLINE_SW_URL,
   ];
 
-  const VALID_THEMES = new Set(["light", "dark", "sepia"]);
+  const VALID_THEMES = new Set([
+    "light",
+    "eink",
+    "eink-warm",
+    "eink-contrast",
+    "eink-night",
+    "dark",
+    "sepia",
+  ]);
 
   const defaultSettings = {
     theme: "light",
@@ -118,6 +126,7 @@
     pressState: null,
     pageSwipeState: null,
     ignoreNextChapterClickUntil: 0,
+    ignoreNextReaderTapUntil: 0,
 
     /* Detail sheet */
     detailChapterId: null,
@@ -550,6 +559,7 @@
   }
 
   function handleReaderSurfaceTap(e) {
+    if (Date.now() < state.ignoreNextReaderTapUntil) return;
     if (!(e.target instanceof Element)) return;
     if (isBookDetailOpen()) return;
     if (
@@ -1911,6 +1921,10 @@
   function updateThemeColor(resolved) {
     const themeColors = {
       light: "#f7f1e3",
+      eink: "#f4f4ef",
+      "eink-warm": "#f5efde",
+      "eink-contrast": "#ffffff",
+      "eink-night": "#10110f",
       dark: "#11110f",
       sepia: "#f5ead0",
     };
@@ -1926,7 +1940,7 @@
 
   function updateReaderSurface(resolved) {
     const root = document.documentElement;
-    const isDark = resolved === "dark";
+    const isDark = resolved === "dark" || resolved === "eink-night";
 
     /* Reset to CSS defaults first — only override inline if needed */
     root.style.removeProperty("--accent");
@@ -2482,9 +2496,9 @@
   function bindEdgeSwipeNavigation() {
     const container = els.contentStage || els.readerPanel;
     if (!container) return;
-    const edgeZone = 32;
-    const swipeThreshold = 64;
-    const vertThreshold = 32;
+    const swipeThreshold = 78;
+    const verticalLimit = 52;
+    const dominanceRatio = 1.45;
 
     const resetSwipe = () => {
       state.pageSwipeState = null;
@@ -2493,20 +2507,27 @@
     container.addEventListener("pointerdown", (e) => {
       if (
         isBookDetailOpen() ||
+        isSidebarOpen() ||
+        state.settingsOpen ||
         (e.pointerType === "mouse" && e.button !== 0) ||
         e.button === 1
       )
         return;
+      if (
+        e.target instanceof Element &&
+        e.target.closest(
+          "a, button, input, textarea, select, label, summary, [role='button']",
+        )
+      )
+        return;
       const x = e.clientX,
         y = e.clientY;
-      const nearLeft = x <= edgeZone;
-      const nearRight = x >= window.innerWidth - edgeZone;
-      if (!nearLeft && !nearRight) return;
       state.pageSwipeState = {
         pointerId: e.pointerId,
         startX: x,
         startY: y,
-        atLeftEdge: nearLeft,
+        lastX: x,
+        lastY: y,
         active: true,
       };
     });
@@ -2516,16 +2537,30 @@
       if (!s || !s.active || s.pointerId !== e.pointerId) return;
       const dx = e.clientX - s.startX,
         dy = e.clientY - s.startY;
-      if (Math.abs(dy) > vertThreshold || (s.atLeftEdge ? dx < 0 : dx > 0))
+      s.lastX = e.clientX;
+      s.lastY = e.clientY;
+      if (
+        Math.abs(dy) > verticalLimit &&
+        Math.abs(dy) > Math.abs(dx) / dominanceRatio
+      ) {
         resetSwipe();
+      }
     });
 
     const finalize = (e) => {
       const s = state.pageSwipeState;
       if (!s || s.pointerId !== e.pointerId) return;
       const dx = e.clientX - s.startX;
-      if (s.atLeftEdge && dx > swipeThreshold) moveToSibling(-1);
-      else if (!s.atLeftEdge && dx < -swipeThreshold) moveToSibling(1);
+      const dy = e.clientY - s.startY;
+      const isHorizontal =
+        Math.abs(dx) >= swipeThreshold &&
+        Math.abs(dx) > Math.abs(dy) * dominanceRatio;
+      if (isHorizontal) {
+        e.preventDefault();
+        state.ignoreNextReaderTapUntil = Date.now() + 450;
+        stopAutoScroll();
+        moveToSibling(dx < 0 ? 1 : -1);
+      }
       resetSwipe();
     };
 
