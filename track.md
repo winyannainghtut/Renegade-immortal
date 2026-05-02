@@ -1,7 +1,7 @@
 # Translation Track (Renegade Immortal)
 
-Last updated: 2026-03-21 (UTC)
+Last updated: 2026-05-02 (UTC)
 
 ## Progress
 - Total English episodes available: 2088
-- Burmese translated episodes: 930
+- Burmese translated episodes: 932
