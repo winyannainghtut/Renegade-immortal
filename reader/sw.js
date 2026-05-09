@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 "use strict";
 
-const SW_VERSION = "reader-offline-v11";
+const SW_VERSION = "reader-offline-v12";
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const CONTENT_CACHE = `${SW_VERSION}-content`;
 
@@ -12,6 +12,11 @@ const CORE_SHELL_URLS = [
   "./app.js",
   "./manifest.json",
   "./app-manifest.json",
+  "./vendor/marked.min.js",
+  "./vendor/purify.min.js",
+  "./icons/icon.svg",
+  "./icons/favicon.svg",
+  "./icons/maskable.svg",
 ];
 
 self.addEventListener("install", (event) => {

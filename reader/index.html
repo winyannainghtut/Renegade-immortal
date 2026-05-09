@@ -8,7 +8,8 @@
     <meta name="description"
         content="Renegade Immortal novel reader – offline-capable, mobile-first chapter browser." />
     <title>Renegade Immortal Reader</title>
-    <link rel="icon" href="data:," />
+    <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg" />
+    <link rel="apple-touch-icon" href="./icons/icon.svg" />
     <link rel="manifest" href="./app-manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -373,9 +374,13 @@
         </div>
     </div>
 
-    <!-- CDN libs -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
+    <!-- Vendored libs (pinned + SRI) -->
+    <script src="./vendor/marked.min.js"
+        integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi"
+        crossorigin="anonymous"></script>
+    <script src="./vendor/purify.min.js"
+        integrity="sha384-XQqX/4yiUGu+oyr87jvWzRuqBUK/adrY0DunhL+tID9m/9dwSpV8h9Fk/Sg6ifVQ"
+        crossorigin="anonymous"></script>
     <script src="./app.js"></script>
 </body>
 

@@ -32,8 +32,7 @@ Thumbs.db
 mcp.json
 tessl.json
 .github/skills/
-.vscode/mcp.json
-.vscode/skills/
+.vscode/
 
 # Python bytecode
 __pycache__/
