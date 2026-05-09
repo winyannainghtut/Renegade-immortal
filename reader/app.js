@@ -41,6 +41,11 @@
     "./app.js",
     "./manifest.json",
     "./app-manifest.json",
+    "./vendor/marked.min.js",
+    "./vendor/purify.min.js",
+    "./icons/icon.svg",
+    "./icons/favicon.svg",
+    "./icons/maskable.svg",
     OFFLINE_SW_URL,
   ];
 
@@ -1477,19 +1482,49 @@
     state.activeFetchController = controller;
 
     try {
-      const res = await fetch(toReaderPath(entry.path), {
-        cache: "no-store",
-        signal: controller.signal,
-      });
+      const chapterUrl = toReaderPath(entry.path);
+      let res = null;
+      let markdown = null;
 
-      if (!res.ok)
-        throw new Error(`Could not open ${entry.path} (${res.status})`);
+      try {
+        res = await fetch(chapterUrl, {
+          cache: "default",
+          signal: controller.signal,
+        });
+      } catch (networkErr) {
+        if (networkErr && networkErr.name === "AbortError") throw networkErr;
+        /* Network failed — fall through to cache lookup */
+        res = null;
+      }
 
-      const markdown = await res.text();
+      if (res && res.ok) {
+        markdown = await res.text();
+      } else {
+        /* Try the Cache Storage directly.
+           Chapters live outside the service-worker scope on GitHub Pages,
+           so the SW can't intercept their fetches, but cacheUrls() did
+           store them. Resolve them here so offline mode actually works. */
+        const cachedText = await readCachedMarkdown(chapterUrl);
+        if (cachedText !== null) {
+          markdown = cachedText;
+        } else if (res) {
+          throw new Error(`Could not open ${entry.path} (${res.status})`);
+        } else {
+          throw new Error(
+            navigator.onLine
+              ? `Could not open ${entry.path}`
+              : `Offline and this chapter isn't cached yet.`,
+          );
+        }
+      }
+
       if (!isActiveRequest(requestId, chapterId)) return;
 
       const html = renderMarkdownToSafeHtml(markdown, entry.path);
-      renderChapterContent(html, { useSavedPosition: useSavedPos });
+      renderChapterContent(html, {
+        useSavedPosition: useSavedPos,
+        sourceLabel: entry.sourceLabel,
+      });
       setChapterMeta(entry, "");
       updateChapterMetaBadges(chapterId);
 
@@ -1545,6 +1580,7 @@
     void els.content.offsetWidth;
     els.content.classList.add("reader-transition-enter");
     els.content.innerHTML = output;
+    applyContentLang(options.sourceLabel);
 
     requestAnimationFrame(() => {
       applyProgressGlow(0);
@@ -1618,7 +1654,25 @@
       }
     }
 
+    /* Harden any anchor that still points to an absolute URL (external link)
+       so the new tab can't hijack the opener. */
+    for (const a of tpl.content.querySelectorAll("a[href]")) {
+      const href = a.getAttribute("href") || "";
+      if (/^https?:\/\//i.test(href) && !a.dataset.chapterId) {
+        a.setAttribute("target", "_blank");
+        a.setAttribute("rel", "noopener noreferrer");
+      }
+    }
+
     return tpl.innerHTML;
+  }
+
+  function applyContentLang(sourceLabel) {
+    if (!els.content) return;
+    const lang =
+      sourceLabel === "Burmese" ? "my" : sourceLabel === "English" ? "en" : "";
+    if (lang) els.content.setAttribute("lang", lang);
+    else els.content.removeAttribute("lang");
   }
 
   function resolveRelativeAssetUrl(chapterPath, rawValue) {
@@ -2670,6 +2724,20 @@
       .split("/")
       .map((seg) => encodeURIComponent(seg))
       .join("/")}`;
+  }
+
+  /* Walk every open Cache and return the first match as text.
+     Used when chapters live outside the service-worker scope
+     (the SW never sees the fetch, but cacheUrls() already stored them). */
+  async function readCachedMarkdown(url) {
+    if (typeof caches === "undefined" || !caches || !caches.match) return null;
+    try {
+      const match = await caches.match(url, { ignoreVary: true });
+      if (match && match.ok) return await match.text();
+    } catch (_) {
+      /* ignore */
+    }
+    return null;
   }
 
   /* ─────────────────────────────────────────────────────────────
