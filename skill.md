@@ -12,6 +12,7 @@ When executing translation tasks, respect the project structure:
 - **`eng-episodes/`**: English source chapters.
 - **`burmese-episodes/`**: Burmese translated chapters. Ensure folder ranges and file names match the English source.
 - **`track.md`**: The single source of truth for tracking project progress. Always keep this updated with the translated count, remaining files, and completed files.
+- **Token Limits & Chunking:** If the original English texts are too large for the input and output limit, chunk the text and two-time translate the episodes to ensure completion.
 
 ## 2. Output Format
 For every chapter translation request, always format the output as follows:
