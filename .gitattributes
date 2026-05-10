@@ -1,11 +1,26 @@
-# Force LF line endings on all text files
-* text=auto eol=lf
-*.md text eol=lf
-*.json text eol=lf
-*.js text eol=lf
-*.py text eol=lf
-*.ps1 text eol=lf
-*.css text eol=lf
-*.html text eol=lf
-*.yaml text eol=lf
-*.yml text eol=lf
+# Handle line endings automatically for files detected as text
+# and leave all files untouched that are detected as binary.
+* text=auto
+
+# Ensure that specific text files are always normalized to LF in the repo
+# and converted to the OS's native line endings on checkout.
+*.md text
+*.txt text
+*.json text
+*.js text
+*.css text
+*.html text
+*.py text
+*.ps1 text
+*.yaml text
+*.yml text
+
+# Denote all files that are truly binary and should not be modified.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
