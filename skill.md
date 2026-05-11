@@ -18,7 +18,6 @@ When executing translation tasks, respect the project structure:
 For every chapter translation request, always format the output as follows:
 1. **Title:** `Chapter X - [Burmese Title]`
 2. **Body:** Translated text with correct paragraph spacing.
-3. **Footnotes:** Add brief explanations at the end for complex Daoist concepts, cultural terms, or specific references to `xian_ni_ref.md` if necessary.
 
 ## 3. Stylistic & Translation Guidelines
 - **Tone:** The narrative is serious, somewhat dark, and philosophical. "To conform is to be mortal; to defy is to become immortal" (顺为凡，逆则仙). Wang Lin is a ruthless character; the language must reflect his cold determination and the brutal nature of the cultivation world.
