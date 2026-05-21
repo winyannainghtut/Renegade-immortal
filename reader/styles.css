@@ -1330,6 +1330,7 @@ select:focus {
     left: 50%;
     bottom: calc(74px + var(--safe-bottom));
     transform: translateX(-50%);
+    display: none;
     transition:
         opacity 180ms ease,
         transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -1815,7 +1816,11 @@ select:focus {
 
     /* Full-screen: minimal top padding (no mobile top toolbar) */
     .reader-content-layer {
-        padding: calc(8px + var(--safe-top)) 14px calc(88px + var(--safe-bottom)) 14px;
+        padding: calc(8px + var(--safe-top)) 14px calc(144px + var(--safe-bottom)) 14px;
+    }
+
+    .auto-scroll-control {
+        display: block;
     }
 
     .scroll-to-top {

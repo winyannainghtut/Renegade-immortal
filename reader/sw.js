@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 "use strict";
 
-const SW_VERSION = "reader-offline-v12";
+const SW_VERSION = "reader-offline-v13";
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const CONTENT_CACHE = `${SW_VERSION}-content`;
 
@@ -216,6 +216,7 @@ async function cacheUrls(rawUrls) {
   const cache = await caches.open(CONTENT_CACHE);
   const urls = normalizeUrls(rawUrls);
   const total = urls.length;
+  const cachedUrls = [];
   let done = 0;
   let failed = 0;
 
@@ -224,6 +225,7 @@ async function cacheUrls(rawUrls) {
       const response = await fetch(url, { cache: "no-store" });
       if (response && response.ok) {
         await cache.put(url, response.clone());
+        cachedUrls.push(url);
       } else {
         failed += 1;
       }
@@ -242,6 +244,8 @@ async function cacheUrls(rawUrls) {
   await broadcast({
     type: "OFFLINE_COMPLETE",
     cached: Math.max(0, done - failed),
+    cachedUrls,
+    failed,
     total,
   });
 }

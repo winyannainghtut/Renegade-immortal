@@ -141,8 +141,10 @@
     offlineCaching: false,
     offlineReady: false,
     offlineCachedCount: 0,
+    offlineCachedChapterCount: 0,
     offlineTotalCount: 0,
     offlineTargetCount: 0,
+    offlineTargetIds: [],
     offlineError: "",
     swRegistration: null,
   };
@@ -538,6 +540,7 @@
     /* Sync mobile nav settings button active state */
     if (els.navSettingsBtn) {
       els.navSettingsBtn.classList.toggle("nav-active", state.settingsOpen);
+      setAriaExpanded(els.navSettingsBtn, expanded, label);
     }
     if (state.settingsOpen && !wasOpen) {
       requestAnimationFrame(() => focusElement(els.themeSelect));
@@ -692,7 +695,9 @@
     state.offlineReady = false;
     state.offlineError = "";
     state.offlineCachedCount = 0;
+    state.offlineCachedChapterCount = 0;
     state.offlineTotalCount = payload.urls.length;
+    state.offlineTargetIds = payload.targetIds;
     state.offlineTargetCount = payload.chapterCount;
 
     showToast(`Downloading ${payload.chapterCount} episodes…`, 0);
@@ -714,7 +719,11 @@
     for (const entry of targets) {
       if (entry && entry.path) urls.add(toReaderPath(entry.path));
     }
-    return { urls: [...urls], chapterCount: targets.length };
+    return {
+      urls: [...urls],
+      chapterCount: targets.length,
+      targetIds: targets.map((entry) => entry.id),
+    };
   }
 
   function getOfflineTargetEntries() {
@@ -772,7 +781,6 @@
 
     if (data.type === "OFFLINE_COMPLETE") {
       state.offlineCaching = false;
-      state.offlineReady = true;
       state.offlineCachedCount = clamp(
         Number(data.cached),
         0,
@@ -783,17 +791,35 @@
         0,
         Number.MAX_SAFE_INTEGER,
       );
-      state.offlineError = "";
+      const failedCount = clamp(Number(data.failed), 0, Number.MAX_SAFE_INTEGER);
+      const targetIds = Array.isArray(state.offlineTargetIds)
+        ? state.offlineTargetIds
+        : [];
+      const cachedUrls = Array.isArray(data.cachedUrls)
+        ? new Set(data.cachedUrls)
+        : null;
+      const cachedChapterIds = getCachedChapterIds(targetIds, cachedUrls, failedCount);
 
-      /* Track which chapters are now offline */
-      const targets = getOfflineTargetEntries();
-      for (const entry of targets) state.offlineChapters.add(entry.id);
+      for (const id of cachedChapterIds) state.offlineChapters.add(id);
       saveOfflineChapters();
+      state.offlineCachedChapterCount = cachedChapterIds.length;
+      state.offlineTargetCount = targetIds.length;
+      state.offlineReady = cachedChapterIds.length > 0;
+
+      const allChaptersCached =
+        targetIds.length > 0 &&
+        cachedChapterIds.length === targetIds.length &&
+        failedCount === 0;
+      state.offlineError = allChaptersCached
+        ? ""
+        : `Cached ${cachedChapterIds.length}/${targetIds.length} episodes. ${failedCount} files failed.`;
 
       showToast(
-        "Download complete!",
-        100,
-        `${state.offlineTargetCount} episodes cached`,
+        allChaptersCached ? "Download complete!" : "Download completed with errors",
+        allChaptersCached ? 100 : getOfflineCompletionPercent(cachedChapterIds.length, targetIds.length),
+        allChaptersCached
+          ? `${cachedChapterIds.length} episodes cached`
+          : state.offlineError,
       );
       window.setTimeout(hideToast, 3000);
 
@@ -810,6 +836,23 @@
       updateOfflineUI();
       hideToast();
     }
+  }
+
+  function getCachedChapterIds(targetIds, cachedUrls, failedCount) {
+    if (!Array.isArray(targetIds) || !targetIds.length) return [];
+    if (!cachedUrls) return failedCount > 0 ? [] : targetIds.slice();
+
+    return targetIds.filter((id) => {
+      const entry = state.entriesById.get(id);
+      if (!entry || !entry.path) return false;
+      return cachedUrls.has(toAbsoluteUrl(toReaderPath(entry.path)));
+    });
+  }
+
+  function getOfflineCompletionPercent(done, total) {
+    const max = Math.max(0, Number(total) || 0);
+    if (!max) return 0;
+    return Math.round((Math.max(0, Number(done) || 0) / max) * 100);
   }
 
   function updateOfflineUI() {
@@ -1086,7 +1129,6 @@
       saveSettings();
       renderSourceFilter();
       renderChapterList();
-      ensureCurrentChapterInSource();
     });
     return btn;
   }
@@ -1380,25 +1422,6 @@
     } else {
       els.libraryMeta.textContent = `${visible.toLocaleString()} of ${total.toLocaleString()} chapters`;
     }
-  }
-
-  function ensureCurrentChapterInSource() {
-    if (!state.currentId) return;
-    const filter = state.settings.source;
-    if (filter === FILTER_ALL) return;
-
-    const current = state.entriesById.get(state.currentId);
-    if (filter === FILTER_BOOKMARK) {
-      if (state.bookmarks.has(state.currentId)) return;
-    } else if (filter === FILTER_OFFLINE) {
-      if (state.offlineChapters.has(state.currentId)) return;
-    } else {
-      if (current && current.sourceLabel === filter) return;
-    }
-
-    const firstVisible = state.filteredEntries[0];
-    if (firstVisible)
-      openChapter(firstVisible.id, { closeSidebarOnMobile: false });
   }
 
   function setActiveChapterInList(chapterId) {
@@ -2724,6 +2747,14 @@
       .split("/")
       .map((seg) => encodeURIComponent(seg))
       .join("/")}`;
+  }
+
+  function toAbsoluteUrl(url) {
+    try {
+      return new URL(url, window.location.href).href;
+    } catch (_) {
+      return url;
+    }
   }
 
   /* Walk every open Cache and return the first match as text.

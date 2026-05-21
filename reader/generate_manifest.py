@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,6 +13,29 @@ SOURCE_ORDER = ["eng-episodes", "burmese-episodes"]
 
 
 def main() -> None:
+  check_only = parse_args()
+  payload = build_manifest_payload()
+
+  if check_only:
+    check_manifest(payload)
+    return
+
+  OUTPUT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+  print(f"Manifest written: {OUTPUT_PATH}")
+  print(f"Sources indexed: {', '.join(payload['sources']) or '(none)'}")
+  print(f"Chapters indexed: {payload['totalEntries']}")
+
+
+def parse_args() -> bool:
+  args = sys.argv[1:]
+  if args == ["--check"]:
+    return True
+  if not args:
+    return False
+  raise SystemExit("Usage: python reader/generate_manifest.py [--check]")
+
+
+def build_manifest_payload() -> dict:
   sources = discover_sources()
   if not sources:
     raise SystemExit(
@@ -56,17 +80,46 @@ def main() -> None:
     entry.pop("_episodeRank", None)
     entry.pop("_pathRank", None)
 
-  payload = {
+  return {
     "generatedAt": datetime.now(timezone.utc).isoformat(),
     "totalEntries": len(entries),
     "sources": [item["label"] for item in sources],
     "entries": entries,
   }
 
-  OUTPUT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-  print(f"Manifest written: {OUTPUT_PATH}")
-  print(f"Sources indexed: {', '.join(payload['sources']) or '(none)'}")
-  print(f"Chapters indexed: {payload['totalEntries']}")
+
+def check_manifest(expected: dict) -> None:
+  if not OUTPUT_PATH.exists():
+    raise SystemExit(f"Manifest is missing: {OUTPUT_PATH}")
+
+  try:
+    current = json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))
+  except json.JSONDecodeError as exc:
+    raise SystemExit(f"Manifest is not valid JSON: {exc}") from exc
+
+  current_comparable = comparable_manifest(current)
+  expected_comparable = comparable_manifest(expected)
+  if current_comparable == expected_comparable:
+    print(f"Manifest is up to date: {OUTPUT_PATH}")
+    return
+
+  current_count = current.get("totalEntries", "unknown") if isinstance(current, dict) else "unknown"
+  expected_count = expected["totalEntries"]
+  raise SystemExit(
+    "Manifest is stale. "
+    f"Expected {expected_count} indexed chapters, found {current_count}. "
+    "Run `python reader/generate_manifest.py`."
+  )
+
+
+def comparable_manifest(payload: dict) -> dict:
+  if not isinstance(payload, dict):
+    return {}
+  return {
+    "totalEntries": payload.get("totalEntries"),
+    "sources": payload.get("sources"),
+    "entries": payload.get("entries"),
+  }
 
 
 def discover_sources() -> list[dict[str, Path | str]]:
