@@ -1161,6 +1161,26 @@ aside.sidebar {
 }
 
 @media (min-width: 980px) {
+    .reader-content-layer {
+        padding-left: 32px;
+        padding-right: 32px;
+    }
+
+    .chapter-meta,
+    .content-stage {
+        width: 100%;
+        max-width: none;
+    }
+
+    .toolbar {
+        width: calc(100vw - 64px);
+        max-width: none;
+    }
+
+    .app-shell.sidebar-visible .toolbar {
+        --toolbar-shift-x: 0px;
+    }
+
     .app-shell.sidebar-visible .control-bubble-nav {
         transform: translateX(calc(-50% - min(352px, 82vw) * 0.28));
     }
