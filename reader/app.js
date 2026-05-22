@@ -60,7 +60,7 @@
   ]);
 
   const defaultSettings = {
-    theme: "light",
+    theme: "eink",
     fontSize: 19,
     lineHeight: 1.75,
     width: 780,
@@ -1997,15 +1997,15 @@
 
   function updateThemeColor(resolved) {
     const themeColors = {
-      light: "#f7f1e3",
+      light: "#f4f4ef",
       eink: "#f4f4ef",
-      "eink-warm": "#f5efde",
+      "eink-warm": "#f3efe4",
       "eink-contrast": "#ffffff",
-      "eink-night": "#10110f",
-      dark: "#11110f",
-      sepia: "#f5ead0",
+      "eink-night": "#12130f",
+      dark: "#12130f",
+      sepia: "#f3efe4",
     };
-    const color = themeColors[resolved] || themeColors.light;
+    const color = themeColors[resolved] || themeColors.eink;
     if (els.themeColorMeta) els.themeColorMeta.content = color;
     try {
       const existing = document.querySelector(
