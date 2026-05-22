@@ -1172,15 +1172,6 @@ aside.sidebar {
         max-width: none;
     }
 
-    .toolbar {
-        width: calc(100vw - 64px);
-        max-width: none;
-    }
-
-    .app-shell.sidebar-visible .toolbar {
-        --toolbar-shift-x: 0px;
-    }
-
     .app-shell.sidebar-visible .control-bubble-nav {
         transform: translateX(calc(-50% - min(352px, 82vw) * 0.28));
     }
