@@ -1209,10 +1209,13 @@ aside.sidebar {
     }
 
     .reader-content-layer {
+        display: flex;
+        flex-direction: column;
         padding: calc(18px + var(--safe-top)) 18px calc(112px + var(--safe-bottom));
     }
 
     .chapter-meta {
+        flex: 0 0 auto;
         width: min(100%, var(--reader-width));
         margin-bottom: 18px;
     }
@@ -1227,8 +1230,14 @@ aside.sidebar {
     }
 
     .content-stage {
+        flex: 1 1 auto;
         width: min(100%, var(--reader-width));
-        height: calc(100% - 104px);
+        min-height: 0;
+        height: auto;
+    }
+
+    .app-shell.reader-chrome-hidden:not(.auto-scroll-active) .reader-content-layer {
+        padding-bottom: calc(18px + var(--safe-bottom));
     }
 
     .settings-grid {
@@ -1251,6 +1260,10 @@ aside.sidebar {
     .scroll-to-top {
         right: calc(12px + var(--safe-right));
         bottom: calc(82px + var(--safe-bottom));
+    }
+
+    .app-shell.reader-chrome-hidden:not(.auto-scroll-active) ~ .scroll-to-top {
+        bottom: calc(18px + var(--safe-bottom));
     }
 
     .dl-toast {
