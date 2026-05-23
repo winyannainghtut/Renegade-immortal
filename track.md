@@ -1,6 +1,6 @@
 # Translation Track (Renegade Immortal)
 
-Last updated: 2026-05-22 (UTC)
+Last updated: 2026-05-23 (UTC)
 
 ## Progress
 - Total English episodes available: 2088
@@ -10,6 +10,9 @@ Last updated: 2026-05-22 (UTC)
 - 2001–2028 ✅
 - 2031–2052 ✅
 - 2061–2083 ✅
+
+## Re-translated & Padded Batches
+- 0130–0140 (corrected to 4-digit padding, verified terminology) ✅
 
 ## Remaining (quota-paused, to resume when quota resets)
 - 2029, 2030
