@@ -81,6 +81,12 @@ REPLACEMENTS = [
     
     # Heaven Trampling
     ("နင်းခြေခြင်း", "နင်းချေခြင်း"),
+    
+    # Flag of Souls
+    ("ဝိညာဉ်အလံ", "ဝိညာဉ်စုစည်းမှုအလံ"),
+    
+    # Ji Realm
+    ("ကျိအဆင့်", "ကျိနယ်ပယ်"),
 ]
 
 def standardize_file(file_path, dry_run=True):
