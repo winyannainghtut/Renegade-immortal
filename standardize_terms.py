@@ -14,6 +14,9 @@ if sys.platform.startswith("win"):
 
 # Ordered by length of the target string (longest first) to prevent partial/double replacements
 REPLACEMENTS = [
+    # Double replacement cleanups
+    ("ကောင်းကင်ဘေးဒဏ်ဒဏ်", "ကောင်းကင်ဘေးဒဏ်"),
+    
     # Qi Condensation
     ("ချီစုဆောင်းခြင်း အဆင့်", "ချီစုစည်းမှုအဆင့်"),
     ("ချီစုဆောင်းခြင်းအဆင့်", "ချီစုစည်းမှုအဆင့်"),
