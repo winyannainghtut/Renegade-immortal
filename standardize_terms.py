@@ -14,9 +14,6 @@ if sys.platform.startswith("win"):
 
 # Ordered by length of the target string (longest first) to prevent partial/double replacements
 REPLACEMENTS = [
-    # Double replacement cleanups
-    ("ကောင်းကင်ဘေးဒဏ်ဒဏ်", "ကောင်းကင်ဘေးဒဏ်"),
-    
     # Qi Condensation
     ("ချီစုဆောင်းခြင်း အဆင့်", "ချီစုစည်းမှုအဆင့်"),
     ("ချီစုဆောင်းခြင်းအဆင့်", "ချီစုစည်းမှုအဆင့်"),
@@ -91,9 +88,6 @@ REPLACEMENTS = [
     # Ji Realm
     ("ကျိအဆင့်", "ကျိနယ်ပယ်"),
     
-    # Heavenly Tribulation
-    ("ကောင်းကင်ဘေး", "ကောင်းကင်ဘေးဒဏ်"),
-    
     # Yuanying pinyin typo
     ("ယွမ်ယင်း", "နတ်သူငယ်"),
     
@@ -118,6 +112,24 @@ def standardize_file(file_path, dry_run=True):
     modified_content = content
     changes_count = 0
     
+    # 1. Handle Heavenly Tribulation using regex to avoid double-suffix loops
+    import re
+    # Clean up any existing double suffixes
+    if "ကောင်းကင်ဘေးဒဏ်ဒဏ်" in modified_content:
+        count = modified_content.count("ကောင်းကင်ဘေးဒဏ်ဒဏ်")
+        changes_count += count
+        if not dry_run:
+            modified_content = modified_content.replace("ကောင်းကင်ဘေးဒဏ်ဒဏ်", "ကောင်းကင်ဘေးဒဏ်")
+            
+    # Standardize ကောင်းကင်ဘေး only if NOT followed by ဒဏ်
+    matches = re.findall(r"ကောင်းကင်ဘေး(?!ဒဏ်)", modified_content)
+    if matches:
+        count = len(matches)
+        changes_count += count
+        if not dry_run:
+            modified_content = re.sub(r"ကောင်းကင်ဘေး(?!ဒဏ်)", "ကောင်းကင်ဘေးဒဏ်", modified_content)
+            
+    # 2. Process all other static replacements
     for old_term, new_term in REPLACEMENTS:
         if old_term in modified_content:
             count = modified_content.count(old_term)
