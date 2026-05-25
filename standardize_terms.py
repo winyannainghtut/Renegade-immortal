@@ -68,6 +68,19 @@ REPLACEMENTS = [
     
     # Flying Sword
     ("ဓားပျံ", "ပျံသန်းဓား"),
+    
+    # Soul Transformation
+    ("ဝိညာဉ်အသွင်ပြောင်းလဲခြင်း", "ဝိညာဉ်အသွင်ပြောင်းခြင်း"),
+    
+    # Ancient Demon / Devil
+    ("ရှေးဦးနတ်ဆိုး", "ရှေးဟောင်းနတ်ဆိုး"),
+    ("ရှေးဦးမိစ္ဆာ", "ရှေးဟောင်းမိစ္ဆာ"),
+    
+    # Yuan Shen / Primordial Spirit
+    ("ယွမ်ရှန်း", "မူလဝိညာဉ်"),
+    
+    # Heaven Trampling
+    ("နင်းခြေခြင်း", "နင်းချေခြင်း"),
 ]
 
 def standardize_file(file_path, dry_run=True):
