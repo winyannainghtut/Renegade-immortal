@@ -87,6 +87,21 @@ REPLACEMENTS = [
     
     # Ji Realm
     ("ကျိအဆင့်", "ကျိနယ်ပယ်"),
+    
+    # Heavenly Tribulation
+    ("ကောင်းကင်ဘေး", "ကောင်းကင်ဘေးဒဏ်"),
+    
+    # Yuanying pinyin typo
+    ("ယွမ်ယင်း", "နတ်သူငယ်"),
+    
+    # Domain variation
+    ("စွမ်းအားနယ်ပယ်", "အသိစိတ်နယ်ပယ်"),
+    
+    # Shenshi pinyin typo
+    ("ရှင်ရှီ", "ဝိညာဉ်အာရုံ"),
+    
+    # Nirvana Scryer pinyin typo
+    ("ခွေးနီ", "နိဗ္ဗာန်အာရုံခံ"),
 ]
 
 def standardize_file(file_path, dry_run=True):
