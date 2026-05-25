@@ -99,6 +99,18 @@ REPLACEMENTS = [
     
     # Nirvana Scryer pinyin typo
     ("ခွေးနီ", "နိဗ္ဗာန်အာရုံခံ"),
+    
+    # Heng Yue Sect spelling variation
+    ("ဟန်ယွဲ့ဂိုဏ်း", "ဟန်ရွဲ့ဂိုဏ်း"),
+    
+    # Sea of Devils variation
+    ("နတ်ဆိုးပင်လယ်", "မိစ္ဆာပင်လယ်"),
+    
+    # Rain Celestial Realm variation
+    ("မိုးနတ်ဘုရားနယ်မြေ", "မိုးနတ်ဘုရားနယ်ပယ်"),
+    
+    # Planet spelling typo
+    ("ဂြိုလ်", "ဂြိုဟ်"),
 ]
 
 def standardize_file(file_path, dry_run=True):
